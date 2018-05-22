@@ -10,8 +10,7 @@ config :phoenix_demo, PhoenixDemoWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "hCcjh22viE2CoM6q/13ZLiA3nFDNecVkrnnOCmsfmoHTmK57GgSC2k8j9H8KAmhC",
   render_errors: [view: PhoenixDemoWeb.ErrorView, accepts: ~w(html json)],
-  pubsub: [name: PhoenixDemo.PubSub,
-           adapter: Phoenix.PubSub.PG2]
+  pubsub: [name: PhoenixDemo.PubSub, adapter: Phoenix.PubSub.PG2]
 
 # Configures Elixir's Logger
 config :logger, :console,
@@ -20,4 +19,4 @@ config :logger, :console,
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
-import_config "#{Mix.env}.exs"
+import_config "#{Mix.env()}.exs"
