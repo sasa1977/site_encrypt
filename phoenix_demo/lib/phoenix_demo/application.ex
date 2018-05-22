@@ -4,14 +4,8 @@ defmodule PhoenixDemo.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   def start(_type, _args) do
-    import Supervisor.Spec
-
-    # Define workers and child supervisors to be supervised
     children = [
-      # Start the endpoint when the application starts
-      supervisor(PhoenixDemoWeb.Endpoint, [])
-      # Start your own worker by calling: PhoenixDemo.Worker.start_link(arg1, arg2, arg3)
-      # worker(PhoenixDemo.Worker, [arg1, arg2, arg3]),
+      SiteEncrypt.Phoenix.child_spec({PhoenixDemoWeb.Certbot, PhoenixDemoWeb.Endpoint})
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

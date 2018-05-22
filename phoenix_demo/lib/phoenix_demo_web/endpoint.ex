@@ -23,6 +23,8 @@ defmodule PhoenixDemoWeb.Endpoint do
 
   plug Plug.Logger
 
+  plug SiteEncrypt.AcmeChallenge, PhoenixDemoWeb.Certbot.folder()
+
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
@@ -48,11 +50,20 @@ defmodule PhoenixDemoWeb.Endpoint do
   configuration should be loaded from the system environment.
   """
   def init(_key, config) do
+    config = configure_https(config)
+
     if config[:load_from_system_env] do
       port = System.get_env("PORT") || raise "expected the PORT environment variable to be set"
       {:ok, Keyword.put(config, :http, [:inet6, port: port])}
     else
       {:ok, config}
+    end
+  end
+
+  defp configure_https(config) do
+    case PhoenixDemoWeb.Certbot.ssl_keys() do
+      {:ok, keys} -> Keyword.put(config, :https, [port: 4001] ++ keys)
+      :error -> Keyword.put(config, :https, false)
     end
   end
 end
