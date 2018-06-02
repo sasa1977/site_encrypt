@@ -25,6 +25,7 @@ defmodule SiteEncrypt.MixProject do
       {:plug, "~> 1.5", optional: true},
       {:jason, "~> 1.0"},
       {:jose, "~> 1.8"},
+      {:acme_ex, "~> 0.4"},
       {:dialyxir, "~> 0.5.0", runtime: false, only: [:dev, :test]}
     ]
   end
