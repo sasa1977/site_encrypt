@@ -27,7 +27,7 @@ defmodule SiteEncrypt.Certifier do
   def handle_info(other, state), do: super(other, state)
 
   @impl Parent.GenServer
-  def handle_child_terminated(:fetcher, _pid, _reason, state) do
+  def handle_child_terminated(:fetcher, _meta, _pid, _reason, state) do
     config = state.callback.config()
     log(config, "Certbot finished")
     Process.send_after(self(), :start_fetch, config.renew_interval())

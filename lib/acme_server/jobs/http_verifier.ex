@@ -27,9 +27,9 @@ defmodule AcmeServer.Jobs.HttpVerifier do
   def handle_info(other, state), do: super(other, state)
 
   @impl Parent.GenServer
-  def handle_child_terminated(:verification, _pid, :normal, state), do: {:noreply, state}
+  def handle_child_terminated(:verification, _meta, _pid, :normal, state), do: {:noreply, state}
 
-  def handle_child_terminated(:verification, _pid, _abnormal_reason, state) do
+  def handle_child_terminated(:verification, _meta, _pid, _abnormal_reason, state) do
     start_verification(state)
     {:noreply, state}
   end
