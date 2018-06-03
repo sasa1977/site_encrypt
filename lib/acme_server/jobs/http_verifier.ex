@@ -19,10 +19,13 @@ defmodule AcmeServer.Jobs.HttpVerifier do
   # crash. But even if it does, we don't want to trip up the restart intensity,
   # and crash other verifiers.
 
-  # We'll retry at most 12 times, with 5 seconds delay between each retry,
-  # so in total we're verifying for about one minute.
+  # We'll retry at most 12 times, with 5 seconds delay between each retry.
+  # Each verification request must return in 5 seconds. Therefore, in total
+  # we're verifying for at most 1 minute 55 seconds (12 timeouts of 5 seconds
+  # plus 11 delays of 5 seconds).
   @max_retries 12
   @retry_delay :timer.seconds(5)
+  @http_request_timeout :timer.seconds(5)
 
   use Parent.GenServer, restart: :temporary
 
@@ -114,7 +117,7 @@ defmodule AcmeServer.Jobs.HttpVerifier do
     :httpc.request(
       :get,
       {'http://#{server}/.well-known/acme-challenge/#{token}', []},
-      [],
+      [timeout: @http_request_timeout],
       body_format: :binary
     )
   end
