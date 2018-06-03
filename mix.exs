@@ -21,7 +21,7 @@ defmodule SiteEncrypt.MixProject do
 
   defp deps do
     [
-      {:parent, github: "sasa1977/parent"},
+      {:parent, "~> 0.2.0"},
       {:plug, "~> 1.5", optional: true},
       {:jason, "~> 1.0"},
       {:jose, "~> 1.8"},
