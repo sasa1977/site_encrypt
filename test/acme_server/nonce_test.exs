@@ -7,23 +7,23 @@ defmodule AcmeServer.NonceTest do
     assert nonce != first_nonce
   end
 
-  test "verify created nonce" do
+  test "verify! created nonce" do
     nonce = AcmeServer.Nonce.new()
-    assert :ok == AcmeServer.Nonce.verify(nonce)
+    assert :ok == AcmeServer.Nonce.verify!(nonce)
   end
 
-  test "verify created nonce ONLY once" do
+  test "verify! created nonce ONLY once" do
     nonce = AcmeServer.Nonce.new()
-    assert :ok == AcmeServer.Nonce.verify(nonce)
+    assert :ok == AcmeServer.Nonce.verify!(nonce)
 
     assert_raise MatchError, fn ->
-      AcmeServer.Nonce.verify(nonce)
+      AcmeServer.Nonce.verify!(nonce)
     end
   end
 
   test "verify unknown nonce throw error" do
     assert_raise MatchError, fn ->
-      AcmeServer.Nonce.verify(-1)
+      AcmeServer.Nonce.verify!(-1)
     end
   end
 end
