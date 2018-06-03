@@ -37,8 +37,7 @@ defmodule AcmeServer.Jobs.HttpVerifier do
   def handle_info(:verification_succeeded, state), do: {:stop, :normal, state}
 
   def handle_info(:verification_failed, state) do
-    # TODO: we should also give up at some point.
-    Process.send_after(self(), :start_verification, :timer.seconds(5))
+    retry_verification()
     {:noreply, state}
   end
 
@@ -53,8 +52,13 @@ defmodule AcmeServer.Jobs.HttpVerifier do
   def handle_child_terminated(:verification, _meta, _pid, :normal, state), do: {:noreply, state}
 
   def handle_child_terminated(:verification, _meta, _pid, _abnormal_reason, state) do
-    start_verification(state)
+    retry_verification()
     {:noreply, state}
+  end
+
+  defp retry_verification() do
+    # TODO: we should also give up at some point.
+    Process.send_after(self(), :start_verification, :timer.seconds(5))
   end
 
   defp start_verification(state) do
