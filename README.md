@@ -1,5 +1,7 @@
 # SiteEncrypt
 
+[![Build Status](https://travis-ci.org/sasa1977/site_encrypt.svg?branch=master)](https://travis-ci.org/sasa1977/site_encrypt)
+
 This project aims to provide integrated certification via [Let's encrypt](https://letsencrypt.org/) for sites implemented in Elixir.
 
 Integrated certification means that you don't need to run any other OS process in background. Start your site for the first time, and it will obtain the certificate, and restart the endpoint. The system will also periodically renew the certificate, and when the new certificate is obtained, the endpoint will again be restarted.
