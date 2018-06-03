@@ -19,6 +19,11 @@ defmodule AcmeServer.Jobs.HttpVerifier do
   # crash. But even if it does, we don't want to trip up the restart intensity,
   # and crash other verifiers.
 
+  # We'll retry at most 12 times, with 5 seconds delay between each retry,
+  # so in total we're verifying for about one minute.
+  @max_retries 12
+  @retry_delay :timer.seconds(5)
+
   use Parent.GenServer, restart: :temporary
 
   def start_link(verification_data),
@@ -28,18 +33,14 @@ defmodule AcmeServer.Jobs.HttpVerifier do
 
   @impl GenServer
   def init(verification_data) do
-    state = Map.put(verification_data, :parent, self())
+    state = Map.merge(verification_data, %{parent: self(), attempts: 1})
     start_verification(state)
     {:ok, state}
   end
 
   @impl GenServer
   def handle_info(:verification_succeeded, state), do: {:stop, :normal, state}
-
-  def handle_info(:verification_failed, state) do
-    retry_verification()
-    {:noreply, state}
-  end
+  def handle_info(:verification_failed, state), do: retry_verification(state)
 
   def handle_info(:start_verification, state) do
     start_verification(state)
@@ -51,14 +52,16 @@ defmodule AcmeServer.Jobs.HttpVerifier do
   @impl Parent.GenServer
   def handle_child_terminated(:verification, _meta, _pid, :normal, state), do: {:noreply, state}
 
-  def handle_child_terminated(:verification, _meta, _pid, _abnormal_reason, state) do
-    retry_verification()
-    {:noreply, state}
-  end
+  def handle_child_terminated(:verification, _meta, _pid, _abnormal_reason, state),
+    do: retry_verification(state)
 
-  defp retry_verification() do
-    # TODO: we should also give up at some point.
-    Process.send_after(self(), :start_verification, :timer.seconds(5))
+  defp retry_verification(state) do
+    if(state.attempts == @max_retries) do
+      {:stop, {:error, :max_failures}, state}
+    else
+      Process.send_after(self(), :start_verification, @retry_delay)
+      {:noreply, update_in(state.attempts, &(&1 + 1))}
+    end
   end
 
   defp start_verification(state) do
