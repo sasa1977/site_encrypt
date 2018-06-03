@@ -1,7 +1,29 @@
 defmodule AcmeServer.Jobs.HttpVerifier do
+  @moduledoc false
+
+  # This module powers a single http verifier job, which issues an http challenge
+  # to the server. If the challenge succeeds, the job updates the account info.
+  #
+  # Each verifier is running as a separate process, which ensure proper error
+  # isolation. Failure or blockage of while verifying one site won't affect
+  # other verifications.
+  #
+  # A verifier process is a Parent.GenServer which starts the actual verification
+  # as a child task. This approach is chosen for better control with error
+  # handling. The parent process can apply delay and retry logic, and give
+  # up after some number of retries.
+  #
+  # Because failure of one verification shouldn't affect others, the restart
+  # strategy is temporary. In principle, the Parent.GenServer has minimal logic,
+  # since most of the action is happening in the child task, so it shouldn't
+  # crash. But even if it does, we don't want to trip up the restart intensity,
+  # and crash other verifiers.
+
   use Parent.GenServer, restart: :temporary
 
   def start_link(verification_data),
+    # We're registering the job under the jobs registry to make sure no duplicate
+    # registrations for the same site are running.
     do: Parent.GenServer.start_link(__MODULE__, verification_data, name: via(verification_data))
 
   @impl GenServer
@@ -15,6 +37,7 @@ defmodule AcmeServer.Jobs.HttpVerifier do
   def handle_info(:verification_succeeded, state), do: {:stop, :normal, state}
 
   def handle_info(:verification_failed, state) do
+    # TODO: we should also give up at some point.
     Process.send_after(self(), :start_verification, :timer.seconds(5))
     {:noreply, state}
   end
@@ -78,6 +101,9 @@ defmodule AcmeServer.Jobs.HttpVerifier do
   end
 
   defp http_request(server, token) do
+    # Using httpc, because it doesn't require external dependency. Httpc is not
+    # suitable for production, but AcmeServer is not meant to be used in
+    # production anyway.
     :httpc.request(
       :get,
       {'http://#{server}/.well-known/acme-challenge/#{token}', []},
