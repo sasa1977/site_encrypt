@@ -1,6 +1,7 @@
 defmodule AcmeServer.NonceTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
+  import StreamData
 
   test "new is unique" do
     first_nonce = AcmeServer.Nonce.new()
@@ -8,54 +9,42 @@ defmodule AcmeServer.NonceTest do
     assert nonce != first_nonce
   end
 
-  test "verify! created nonce" do
+  test "nonce can be verified" do
     nonce = AcmeServer.Nonce.new()
     assert :ok == AcmeServer.Nonce.verify!(nonce)
   end
 
-  test "verify! created nonce ONLY once" do
+  test "nonce can be verified only once" do
     nonce = AcmeServer.Nonce.new()
     assert :ok == AcmeServer.Nonce.verify!(nonce)
-
-    assert_raise MatchError, fn ->
-      AcmeServer.Nonce.verify!(nonce)
-    end
+    assert_raise MatchError, fn -> AcmeServer.Nonce.verify!(nonce) end
   end
 
-  test "verify! unknown nonce throw error" do
-    assert_raise MatchError, fn ->
-      AcmeServer.Nonce.verify!(-1)
-    end
-  end
-
-  # TODO: Look at adding StreamData.repeatedly to StreamData
-  # This code is based on https://elixirforum.com/t/how-to-create-a-custom-streamdata-generator/11935/9
-  defp nonce() do
-    :ignore
-    |> StreamData.constant()
-    |> StreamData.bind(fn _ -> StreamData.constant(AcmeServer.Nonce.new()) end)
+  test "unknown nonce isn't verified" do
+    assert_raise MatchError, fn -> AcmeServer.Nonce.verify!(:unknown_nonce) end
   end
 
   property "nonce is always unique" do
-    check all nonce_a <- nonce(),
-              nonce_b <- nonce() do
-      assert nonce_a != nonce_b
+    check all nonces <- nonempty(list_of(nonce())) do
+      assert Enum.uniq(nonces) == nonces
     end
   end
 
   property "nonce is always verifiable" do
-    check all nonce_a <- nonce() do
-      assert :ok == AcmeServer.Nonce.verify!(nonce_a)
+    check all nonce <- nonce() do
+      assert :ok == AcmeServer.Nonce.verify!(nonce)
     end
   end
 
-  property "nonce is can only be verified once" do
-    check all nonce_a <- nonce() do
-      :ok = AcmeServer.Nonce.verify!(nonce_a)
-
-      assert_raise MatchError, fn ->
-        AcmeServer.Nonce.verify!(nonce_a)
-      end
+  property "nonce can only be verified once" do
+    check all nonce <- nonce() do
+      :ok = AcmeServer.Nonce.verify!(nonce)
+      assert_raise MatchError, fn -> AcmeServer.Nonce.verify!(nonce) end
     end
+  end
+
+  defp nonce() do
+    # we need to map a constant to ensure we get a different nonce every time
+    unshrinkable(map(constant(:ignore), fn _ -> AcmeServer.Nonce.new() end))
   end
 end
