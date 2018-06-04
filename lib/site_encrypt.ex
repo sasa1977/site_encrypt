@@ -1,7 +1,7 @@
 defmodule SiteEncrypt do
   @type config :: %{
           run_client?: boolean,
-          ca_url: String.t() | {:local_acme_server, map()},
+          ca_url: String.t() | {:local_acme_server, %{port: pos_integer, adapter: module}},
           domain: String.t(),
           extra_domains: [String.t()],
           email: String.t(),
