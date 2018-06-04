@@ -3,10 +3,7 @@ defmodule AcmeServer.Plug do
   import Plug.Conn
 
   @impl Plug
-  def init(config) do
-    site_uri = config |> Keyword.fetch!(:site) |> URI.parse()
-    config |> Map.new() |> Map.put(:site_uri, site_uri)
-  end
+  def init(config), do: config
 
   @impl Plug
   def call(conn, config) do

@@ -1,6 +1,28 @@
 defmodule AcmeServer do
   alias AcmeServer.Account
 
+  def child_spec(opts),
+    do: %{id: __MODULE__, start: {__MODULE__, :start_link, [opts]}, type: :supervisor}
+
+  def start_link(opts) do
+    # The supervision subtree of an ACME server instance. This supervisor sits
+    # in the client app tree, which supports proper shutdown. If this supervisor
+    # is stopped, all the processes associated with this ACME server instance
+    # are also terminated.
+    Supervisor.start_link(
+      [
+        {AcmeServer.Challenges, Keyword.fetch!(opts, :config)},
+        Keyword.fetch!(opts, :endpoint)
+      ],
+      strategy: :one_for_one
+    )
+  end
+
+  def config(opts) do
+    site_uri = opts |> Keyword.fetch!(:site) |> URI.parse()
+    opts |> Map.new() |> Map.put(:site_uri, site_uri)
+  end
+
   def resource_path(request_path, config) do
     path = config.site_uri.path || ""
     size = byte_size(path)
@@ -69,7 +91,7 @@ defmodule AcmeServer do
     order = AcmeServer.Account.get_order!(account_id, order_id)
     authorizations_url = "#{config.site}/authorizations/#{order_path}"
 
-    AcmeServer.Jobs.start_http_verifier(%{
+    AcmeServer.Challenges.start_challenge(config, %{
       dns: config.dns,
       account_id: account_id,
       order: order,

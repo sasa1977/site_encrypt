@@ -4,8 +4,9 @@ defmodule AcmeServer.Standalone do
   def child_spec(opts) do
     {adapter, adapter_opts} = Keyword.fetch!(opts, :adapter)
     port = port(adapter, adapter_opts)
-    plug_opts = [site: "http://localhost:#{port}", dns: Keyword.fetch!(opts, :dns)]
-    adapter_spec(adapter, [{:plug, {AcmeServer.Plug, plug_opts}} | adapter_opts])
+    config = AcmeServer.config(site: "http://localhost:#{port}", dns: Keyword.fetch!(opts, :dns))
+    endpoint = adapter_spec(adapter, [{:plug, {AcmeServer.Plug, config}} | adapter_opts])
+    AcmeServer.child_spec(config: config, endpoint: endpoint)
   end
 
   defp port(Cowboy, adapter_opts), do: cowboy_port(adapter_opts)
