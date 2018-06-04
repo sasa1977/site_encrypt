@@ -145,20 +145,20 @@ defmodule AcmeServer do
 
   defp decode_request(body) do
     {:ok, request} = AcmeServer.JWS.decode(body)
-    verify_nonce(request)
+    verify_nonce!(request)
     request
   end
 
   defp client_key(request), do: Map.fetch!(request.protected, "jwk")
 
-  defp verify_nonce(request) do
+  defp verify_nonce!(request) do
     nonce =
       request.protected
       |> Map.fetch!("nonce")
       |> Base.decode64!(padding: false)
       |> String.to_integer()
 
-    AcmeServer.Nonce.verify(nonce)
+    AcmeServer.Nonce.verify!(nonce)
   end
 
   defp decode_order_path(order_path) do

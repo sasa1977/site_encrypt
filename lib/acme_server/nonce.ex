@@ -5,7 +5,7 @@ defmodule AcmeServer.Nonce do
     nonce
   end
 
-  def verify(nonce) do
+  def verify!(nonce) do
     AcmeServer.Db.pop!({:nonce, nonce})
     :ok
   end
