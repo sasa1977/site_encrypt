@@ -15,15 +15,9 @@ defmodule AcmeServer.Challenges do
   def start_challenge(config, challenge_data) do
     DynamicSupervisor.start_child(
       via(config),
-      {AcmeServer.Challenge, {challenge_data, challenge_name(config, challenge_data)}}
+      {AcmeServer.Challenge, {config, challenge_data}}
     )
   end
 
   defp via(config), do: AcmeServer.Registry.via_tuple({__MODULE__, config.site})
-
-  # We'll register each challenge with the registry, using ACME server site and
-  # challenge data as the unique key. This ensures that no duplicate challenges
-  # are running at the same time.
-  defp challenge_name(config, challenge_data),
-    do: AcmeServer.Registry.via_tuple({AcmeServer.Challenge, config.site, challenge_data})
 end

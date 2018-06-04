@@ -1,12 +1,12 @@
 defmodule AcmeServer.Nonce do
-  def new() do
+  def new(config) do
     nonce = :erlang.unique_integer([:positive, :monotonic])
-    AcmeServer.Db.store_new!({:nonce, nonce}, nil)
+    AcmeServer.Db.store_new!(config, {:nonce, nonce}, nil)
     nonce
   end
 
-  def verify!(nonce) do
-    AcmeServer.Db.pop!({:nonce, nonce})
+  def verify!(config, nonce) do
+    AcmeServer.Db.pop!(config, {:nonce, nonce})
     :ok
   end
 end

@@ -10,4 +10,13 @@ defmodule AcmeServer.Registry do
   end
 
   def via_tuple(key), do: {:via, Registry, {__MODULE__, key}}
+
+  def register(key, value), do: Registry.register(__MODULE__, key, value)
+
+  def lookup(key) do
+    case Registry.lookup(__MODULE__, key) do
+      [{pid, value}] -> {:ok, pid, value}
+      _ -> :error
+    end
+  end
 end

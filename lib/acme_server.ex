@@ -11,6 +11,7 @@ defmodule AcmeServer do
     # are also terminated.
     Supervisor.start_link(
       [
+        {AcmeServer.Db, Keyword.fetch!(opts, :config)},
         {AcmeServer.Challenges, Keyword.fetch!(opts, :config)},
         Keyword.fetch!(opts, :endpoint)
       ],
@@ -46,15 +47,15 @@ defmodule AcmeServer do
     })
   end
 
-  def handle(_config, :head, "/new" <> _, _body), do: respond(405, [nonce_header()])
+  def handle(config, :head, "/new" <> _, _body), do: respond(405, [nonce_header(config)])
 
-  def handle(_config, :post, "/new-account", body) do
-    account = Account.create(client_key(decode_request(body)))
-    respond_json(201, [nonce_header()], account)
+  def handle(config, :post, "/new-account", body) do
+    account = Account.create(config, client_key(decode_request(config, body)))
+    respond_json(201, [nonce_header(config)], account)
   end
 
   def handle(config, :post, "/new-order", body) do
-    request = decode_request(body)
+    request = decode_request(config, body)
 
     domains =
       request.payload
@@ -62,21 +63,25 @@ defmodule AcmeServer do
       |> Enum.filter(&(Map.fetch!(&1, "type") == "dns"))
       |> Enum.map(&Map.fetch!(&1, "value"))
 
-    {account, order} = create_order(request, domains)
+    {account, order} = create_order(config, request, domains)
     order_path = order_path(account.id, order.id)
 
-    respond_json(201, [{"Location", "#{config.site}/order/#{order_path}"}, nonce_header()], %{
-      status: order.status,
-      expires: expires(),
-      identifiers: Enum.map(domains, &%{type: "dns", value: &1}),
-      authorizations: ["#{config.site}/authorizations/#{order_path}"],
-      finalize: "#{config.site}/finalize/#{order_path}"
-    })
+    respond_json(
+      201,
+      [{"Location", "#{config.site}/order/#{order_path}"}, nonce_header(config)],
+      %{
+        status: order.status,
+        expires: expires(),
+        identifiers: Enum.map(domains, &%{type: "dns", value: &1}),
+        authorizations: ["#{config.site}/authorizations/#{order_path}"],
+        finalize: "#{config.site}/finalize/#{order_path}"
+      }
+    )
   end
 
   def handle(config, :get, "/authorizations/" <> order_path, _body) do
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(account_id, order_id)
+    order = AcmeServer.Account.get_order!(config, account_id, order_id)
 
     respond_json(200, %{
       status: order.status,
@@ -86,9 +91,9 @@ defmodule AcmeServer do
   end
 
   def handle(config, :post, "/challenge/http/" <> order_path, body) do
-    request = decode_request(body)
+    request = decode_request(config, body)
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(account_id, order_id)
+    order = AcmeServer.Account.get_order!(config, account_id, order_id)
     authorizations_url = "#{config.site}/authorizations/#{order_path}"
 
     AcmeServer.Challenges.start_challenge(config, %{
@@ -100,34 +105,34 @@ defmodule AcmeServer do
 
     respond_json(
       200,
-      [nonce_header(), {"Link", "<#{authorizations_url}>;rel=\"up\""}],
+      [nonce_header(config), {"Link", "<#{authorizations_url}>;rel=\"up\""}],
       http_challenge_data(config, account_id, order)
     )
   end
 
   def handle(config, :post, "/finalize/" <> order_path, body) do
-    request = decode_request(body)
+    request = decode_request(config, body)
     csr = request.payload |> Map.fetch!("csr") |> Base.url_decode64!(padding: false)
 
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(account_id, order_id)
+    order = AcmeServer.Account.get_order!(config, account_id, order_id)
 
     cert = AcmeServer.Crypto.sign_csr!({account_id, order_id}, csr, order.domains)
     updated_order = %{order | cert: cert}
-    AcmeServer.Account.update_order(account_id, updated_order)
+    AcmeServer.Account.update_order(config, account_id, updated_order)
 
-    respond_json(200, [nonce_header()], order_data(config, account_id, updated_order))
+    respond_json(200, [nonce_header(config)], order_data(config, account_id, updated_order))
   end
 
   def handle(config, :get, "/order/" <> order_path, _body) do
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(account_id, order_id)
+    order = AcmeServer.Account.get_order!(config, account_id, order_id)
     respond_json(200, order_data(config, account_id, order))
   end
 
-  def handle(_config, :get, "/cert/" <> order_path, _body) do
+  def handle(config, :get, "/cert/" <> order_path, _body) do
     {account_id, order_id} = decode_order_path(order_path)
-    certificate = AcmeServer.Account.get_order!(account_id, order_id).cert
+    certificate = AcmeServer.Account.get_order!(config, account_id, order_id).cert
     respond(200, [], certificate)
   end
 
@@ -162,25 +167,26 @@ defmodule AcmeServer do
   defp respond_json(status, headers \\ [], data),
     do: respond(status, [{"Content-Type", "application/json"} | headers], Jason.encode!(data))
 
-  defp nonce_header(),
-    do: {"Replay-Nonce", AcmeServer.Nonce.new() |> to_string() |> Base.encode64(padding: false)}
+  defp nonce_header(config) do
+    {"Replay-Nonce", AcmeServer.Nonce.new(config) |> to_string() |> Base.encode64(padding: false)}
+  end
 
-  defp decode_request(body) do
+  defp decode_request(config, body) do
     {:ok, request} = AcmeServer.JWS.decode(body)
-    verify_nonce!(request)
+    verify_nonce!(config, request)
     request
   end
 
   defp client_key(request), do: Map.fetch!(request.protected, "jwk")
 
-  defp verify_nonce!(request) do
+  defp verify_nonce!(config, request) do
     nonce =
       request.protected
       |> Map.fetch!("nonce")
       |> Base.decode64!(padding: false)
       |> String.to_integer()
 
-    AcmeServer.Nonce.verify!(nonce)
+    AcmeServer.Nonce.verify!(config, nonce)
   end
 
   defp decode_order_path(order_path) do
@@ -188,13 +194,13 @@ defmodule AcmeServer do
     {String.to_integer(account_id), String.to_integer(order_id)}
   end
 
-  defp create_order(request, domains) do
+  defp create_order(config, request, domains) do
     account =
-      case Account.fetch(client_key(request)) do
+      case Account.fetch(config, client_key(request)) do
         {:ok, account} -> account
-        :error -> Account.create(client_key(request))
+        :error -> Account.create(config, client_key(request))
       end
 
-    {account, AcmeServer.Account.new_order(account, domains)}
+    {account, AcmeServer.Account.new_order(config, account, domains)}
   end
 end

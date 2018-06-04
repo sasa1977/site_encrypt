@@ -5,9 +5,7 @@ defmodule SiteEncrypt.Application do
     Supervisor.start_link(
       [
         SiteEncrypt.Registry,
-        AcmeServer.Registry,
-        # TODO: move this to the client's supervision tree
-        AcmeServer.Db
+        AcmeServer.Registry
       ],
       strategy: :one_for_one,
       name: SiteEncrypt.Supervisor

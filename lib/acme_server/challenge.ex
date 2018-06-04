@@ -29,14 +29,20 @@ defmodule AcmeServer.Challenge do
 
   use Parent.GenServer, restart: :temporary
 
-  def start_link({challenge_data, registered_name}),
-    # We're registering the job under the jobs registry to make sure no duplicate
-    # registrations for the same site are running.
-    do: Parent.GenServer.start_link(__MODULE__, challenge_data, name: registered_name)
+  def start_link({config, challenge_data}) do
+    # We'll register each challenge with the registry, using ACME server site and
+    # challenge data as the unique key. This ensures that no duplicate challenges
+    # are running at the same time.
+    Parent.GenServer.start_link(
+      __MODULE__,
+      {config, challenge_data},
+      name: via(config, challenge_data)
+    )
+  end
 
   @impl GenServer
-  def init(challenge_data) do
-    state = Map.merge(challenge_data, %{parent: self(), attempts: 1})
+  def init({config, challenge_data}) do
+    state = Map.merge(challenge_data, %{parent: self(), attempts: 1, config: config})
     start_challenge(state)
     {:ok, state}
   end
@@ -78,7 +84,8 @@ defmodule AcmeServer.Challenge do
     if state.order.domains
        |> challenge_domains(state.order.token, state.dns, state.key_thumbprint)
        |> Enum.all?(&(&1 == :ok)) do
-      AcmeServer.Account.update_order(state.account_id, %{state.order | status: :valid})
+      order = %{state.order | status: :valid}
+      AcmeServer.Account.update_order(state.config, state.account_id, order)
       send(state.parent, :challenge_succeeded)
     else
       send(state.parent, :challenge_failed)
@@ -121,4 +128,7 @@ defmodule AcmeServer.Challenge do
       body_format: :binary
     )
   end
+
+  defp via(config, challenge_data),
+    do: AcmeServer.Registry.via_tuple({AcmeServer.Challenge, config.site, challenge_data})
 end
