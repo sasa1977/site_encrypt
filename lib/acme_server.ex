@@ -1,9 +1,22 @@
 defmodule AcmeServer do
   alias AcmeServer.Account
 
+  @type site :: String.t()
+  @type dns :: %{String.t() => String.t()}
+  @type config :: %{site: site, site_uri: URI.t(), dns: dns}
+  @type start_opts :: [config: config, endpoint: Supervisor.child_spec()]
+
+  @type method :: :get | :head | :put | :post | :delete
+  @type handle_response :: %{status: status, headers: headers, body: body}
+  @type status :: pos_integer
+  @type headers :: [{String.t(), String.t()}]
+  @type body :: binary
+
+  @spec child_spec(start_opts) :: Supervisor.child_spec()
   def child_spec(opts),
     do: %{id: __MODULE__, start: {__MODULE__, :start_link, [opts]}, type: :supervisor}
 
+  @spec start_link(start_opts) :: Supervisor.on_start()
   def start_link(opts) do
     # The supervision subtree of an ACME server instance. This supervisor sits
     # in the client app tree, which supports proper shutdown. If this supervisor
@@ -19,12 +32,14 @@ defmodule AcmeServer do
     )
   end
 
+  @spec config(site: site, dns: dns) :: config
   def config(opts) do
     site_uri = opts |> Keyword.fetch!(:site) |> URI.parse()
     opts |> Map.new() |> Map.put(:site_uri, site_uri)
   end
 
-  def resource_path(request_path, config) do
+  @spec resource_path(config, String.t()) :: {:ok, String.t()} | :error
+  def resource_path(config, request_path) do
     path = config.site_uri.path || ""
     size = byte_size(path)
 
@@ -34,6 +49,7 @@ defmodule AcmeServer do
     end
   end
 
+  @spec handle(config, method, String.t(), binary) :: handle_response
   def handle(config, method, path, body)
 
   def handle(config, :get, "/directory", _body) do

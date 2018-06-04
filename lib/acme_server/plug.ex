@@ -7,7 +7,7 @@ defmodule AcmeServer.Plug do
 
   @impl Plug
   def call(conn, config) do
-    case AcmeServer.resource_path(conn.request_path, config) do
+    case AcmeServer.resource_path(config, conn.request_path) do
       {:ok, path} -> handle_request(conn, config, path) |> halt()
       :error -> conn
     end
