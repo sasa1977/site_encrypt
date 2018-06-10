@@ -1,4 +1,5 @@
 defmodule AcmeServer.JWS do
+  @spec decode(iodata()) :: {:ok, map()} | :error
   def decode(body) do
     data = Jason.decode!(body)
 

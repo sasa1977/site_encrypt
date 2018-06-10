@@ -22,3 +22,5 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 site_encrypt-*.tar
 
+# Elixir Language Server output
+.elixir_ls

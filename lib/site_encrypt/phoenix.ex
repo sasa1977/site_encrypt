@@ -1,4 +1,16 @@
 defmodule SiteEncrypt.Phoenix do
+  @type config :: %{
+          run_client?: boolean,
+          ca_url: String.t() | {:local_acme_server, %{port: pos_integer, adapter: module}},
+          domain: String.t(),
+          extra_domains: [String.t()],
+          email: String.t(),
+          base_folder: String.t(),
+          renew_interval: pos_integer(),
+          log_level: :none | Logger.level()
+        }
+
+  @spec child_spec(tuple()) :: map()
   def child_spec(opts) do
     %{id: __MODULE__, type: :supervisor, start: {__MODULE__, :start_link, [opts]}}
   end
@@ -18,6 +30,7 @@ defmodule SiteEncrypt.Phoenix do
     )
   end
 
+  @spec restart_endpoint(config) :: tuple()
   def restart_endpoint(config) do
     Supervisor.terminate_child(name(config), :endpoint)
     Supervisor.restart_child(name(config), :endpoint)
