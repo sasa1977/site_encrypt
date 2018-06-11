@@ -11,6 +11,7 @@ defmodule AcmeServer do
   @type status :: pos_integer
   @type headers :: [{String.t(), String.t()}]
   @type body :: binary
+  @type domains :: [String.t()]
 
   @spec child_spec(start_opts) :: Supervisor.child_spec()
   def child_spec(opts),

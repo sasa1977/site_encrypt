@@ -1,7 +1,7 @@
 defmodule AcmeServer.Crypto do
   @type id :: {integer(), integer()}
 
-  @spec sign_csr!(id(), binary(), list()) :: binary() | no_return()
+  @spec sign_csr!(id(), binary(), AcmeServer.domains()) :: binary() | no_return()
   def sign_csr!(id, csr, domains) do
     files = init_files(id)
 

@@ -1,19 +1,24 @@
 defmodule AcmeServer.Account do
-  @type site :: String.t()
-  @type dns :: %{String.t() => String.t()}
-  @type config :: %{site: site, site_uri: URI.t(), dns: dns}
+  @type t :: %{id: integer(), status: atom(), contact: list()}
+  @type order :: %{
+          id: integer(),
+          status: :valid | :pending,
+          cert: nil,
+          domains: AcmeServer.domains(),
+          token: binary()
+        }
 
-  @spec create(config, String.t()) :: map()
+  @spec create(AcmeServer.config(), String.t()) :: t()
   def create(config, client_key) do
     account = %{id: :erlang.unique_integer([:positive, :monotonic]), status: :valid, contact: []}
     AcmeServer.Db.store_new!(config, {:account, client_key}, account)
     account
   end
 
-  @spec fetch(config, String.t()) :: {:ok, any()} | :error
+  @spec fetch(AcmeServer.config(), String.t()) :: {:ok, t()} | :error
   def fetch(config, client_key), do: AcmeServer.Db.fetch(config, {:account, client_key})
 
-  @spec new_order(config, map(), list()) :: map()
+  @spec new_order(AcmeServer.config(), t(), AcmeServer.domains()) :: order()
   def new_order(config, account, domains) do
     order = %{
       id: :erlang.unique_integer([:positive, :monotonic]),
@@ -27,11 +32,11 @@ defmodule AcmeServer.Account do
     order
   end
 
-  @spec update_order(config, integer(), map()) :: true
+  @spec update_order(AcmeServer.config(), integer(), map()) :: true
   def update_order(config, account_id, order),
     do: AcmeServer.Db.store(config, {:order, account_id, order.id}, order)
 
-  @spec get_order!(config, integer(), integer()) :: any()
+  @spec get_order!(AcmeServer.config(), integer(), integer()) :: any()
   def get_order!(config, account_id, order_id),
     do: AcmeServer.Db.fetch!(config, {:order, account_id, order_id})
 end
