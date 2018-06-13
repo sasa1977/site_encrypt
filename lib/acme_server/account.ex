@@ -1,16 +1,16 @@
 defmodule AcmeServer.Account do
-  @type t :: %{id: integer(), status: atom(), contact: list()}
+  @type t :: %{id: integer()}
   @type order :: %{
           id: integer(),
           status: :valid | :pending,
-          cert: nil,
+          cert: nil | binary(),
           domains: AcmeServer.domains(),
           token: binary()
         }
 
   @spec create(AcmeServer.config(), String.t()) :: t()
   def create(config, client_key) do
-    account = %{id: :erlang.unique_integer([:positive, :monotonic]), status: :valid, contact: []}
+    account = %{id: :erlang.unique_integer([:positive, :monotonic])}
     AcmeServer.Db.store_new!(config, {:account, client_key}, account)
     account
   end
@@ -32,7 +32,7 @@ defmodule AcmeServer.Account do
     order
   end
 
-  @spec update_order(AcmeServer.config(), integer(), map()) :: true
+  @spec update_order(AcmeServer.config(), integer(), order) :: true
   def update_order(config, account_id, order),
     do: AcmeServer.Db.store(config, {:order, account_id, order.id}, order)
 

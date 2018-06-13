@@ -6,10 +6,10 @@ defmodule AcmeServer.Db do
   @spec store(AcmeServer.config(), any(), any()) :: true
   def store(config, key, value), do: :ets.insert(table(config), {key, value})
 
-  @spec store_new!(AcmeServer.config(), tuple(), map()) :: true | false
+  @spec store_new!(AcmeServer.config(), any(), any()) :: true | false
   def store_new!(config, key, value), do: true = :ets.insert_new(table(config), {key, value})
 
-  @spec store_new(AcmeServer.config(), tuple(), map()) :: true | false
+  @spec store_new(AcmeServer.config(), any(), any()) :: true | false
   def store_new(config, key, value), do: :ets.insert_new(table(config), {key, value})
 
   @spec fetch!(AcmeServer.config(), any()) :: any()
