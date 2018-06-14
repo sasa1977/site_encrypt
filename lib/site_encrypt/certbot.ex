@@ -1,4 +1,8 @@
 defmodule SiteEncrypt.Certbot do
+  @type https_keys :: [keyfile: String.t(), certfile: String.t(), cacertfile: String.t()]
+  @type ensure_cert :: {:new_cert, String.t()} | {:no_change, String.t()} | {:error, String.t()}
+
+  @spec https_keys(map()) :: {:ok, https_keys} | :error
   def https_keys(config) do
     if keys_available?(config) do
       {:ok,
@@ -12,6 +16,7 @@ defmodule SiteEncrypt.Certbot do
     end
   end
 
+  @spec ensure_cert(SiteEncrypt.config()) :: ensure_cert()
   def ensure_cert(config) do
     ensure_folders(config)
     original_keys_sha = keys_sha(config)
@@ -28,6 +33,7 @@ defmodule SiteEncrypt.Certbot do
     end
   end
 
+  @spec challenge_file(String.t(), String.t()) :: String.t()
   def challenge_file(base_folder, challenge) do
     Path.join([
       webroot_folder(%{base_folder: base_folder}),

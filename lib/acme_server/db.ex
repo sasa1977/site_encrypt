@@ -3,15 +3,26 @@ defmodule AcmeServer.Db do
 
   def start_link(config), do: GenServer.start_link(__MODULE__, config)
 
-  def store(config, key, value), do: :ets.insert(table(config), {key, value})
-  def store_new!(config, key, value), do: true = :ets.insert_new(table(config), {key, value})
-  def store_new(config, key, value), do: :ets.insert_new(table(config), {key, value})
+  @spec store(AcmeServer.config(), any(), any()) :: :ok
+  def store(config, key, value) do
+    :ets.insert(table(config), {key, value})
+    :ok
+  end
 
+  @spec store_new!(AcmeServer.config(), any(), any()) :: :ok
+  def store_new!(config, key, value), do: :ok = store_new(config, key, value)
+
+  @spec store_new(AcmeServer.config(), any(), any()) :: :ok | :error
+  def store_new(config, key, value),
+    do: if(:ets.insert_new(table(config), {key, value}), do: :ok, else: :error)
+
+  @spec fetch!(AcmeServer.config(), any()) :: any()
   def fetch!(config, key) do
     {:ok, value} = fetch(config, key)
     value
   end
 
+  @spec fetch(AcmeServer.config(), any()) :: {:ok, any()} | :error
   def fetch(config, key) do
     case :ets.lookup(table(config), key) do
       [{^key, value}] -> {:ok, value}
@@ -19,6 +30,7 @@ defmodule AcmeServer.Db do
     end
   end
 
+  @spec pop!(AcmeServer.config(), any()) :: any()
   def pop!(config, key) do
     [{^key, value}] = :ets.take(table(config), key)
     value

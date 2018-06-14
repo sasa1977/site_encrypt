@@ -1,4 +1,5 @@
 defmodule SiteEncrypt.Phoenix do
+  @spec child_spec({module, module}) :: Supervisor.child_spec()
   def child_spec(opts) do
     %{id: __MODULE__, type: :supervisor, start: {__MODULE__, :start_link, [opts]}}
   end
@@ -18,9 +19,11 @@ defmodule SiteEncrypt.Phoenix do
     )
   end
 
+  @spec restart_endpoint(SiteEncrypt.config()) :: :ok
   def restart_endpoint(config) do
     Supervisor.terminate_child(name(config), :endpoint)
     Supervisor.restart_child(name(config), :endpoint)
+    :ok
   end
 
   defp name(config), do: SiteEncrypt.Registry.via_tuple({__MODULE__, config.domain})
