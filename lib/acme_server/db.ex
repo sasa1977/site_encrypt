@@ -3,14 +3,18 @@ defmodule AcmeServer.Db do
 
   def start_link(config), do: GenServer.start_link(__MODULE__, config)
 
-  @spec store(AcmeServer.config(), any(), any()) :: true
-  def store(config, key, value), do: :ets.insert(table(config), {key, value})
+  @spec store(AcmeServer.config(), any(), any()) :: :ok
+  def store(config, key, value) do
+    :ets.insert(table(config), {key, value})
+    :ok
+  end
 
-  @spec store_new!(AcmeServer.config(), any(), any()) :: true | false
-  def store_new!(config, key, value), do: true = :ets.insert_new(table(config), {key, value})
+  @spec store_new!(AcmeServer.config(), any(), any()) :: :ok
+  def store_new!(config, key, value), do: :ok = store_new(config, key, value)
 
-  @spec store_new(AcmeServer.config(), any(), any()) :: true | false
-  def store_new(config, key, value), do: :ets.insert_new(table(config), {key, value})
+  @spec store_new(AcmeServer.config(), any(), any()) :: :ok | :error
+  def store_new(config, key, value),
+    do: if(:ets.insert_new(table(config), {key, value}), do: :ok, else: :error)
 
   @spec fetch!(AcmeServer.config(), any()) :: any()
   def fetch!(config, key) do

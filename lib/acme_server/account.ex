@@ -32,7 +32,7 @@ defmodule AcmeServer.Account do
     order
   end
 
-  @spec update_order(AcmeServer.config(), integer(), order) :: true
+  @spec update_order(AcmeServer.config(), integer(), order) :: :ok
   def update_order(config, account_id, order),
     do: AcmeServer.Db.store(config, {:order, account_id, order.id}, order)
 
