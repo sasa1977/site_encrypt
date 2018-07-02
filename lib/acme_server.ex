@@ -134,7 +134,7 @@ defmodule AcmeServer do
     {account_id, order_id} = decode_order_path(order_path)
     order = AcmeServer.Account.get_order!(config, account_id, order_id)
 
-    cert = AcmeServer.Crypto.sign_csr!({account_id, order_id}, csr, order.domains)
+    cert = AcmeServer.Crypto.sign_csr!(csr, order.domains)
     updated_order = %{order | cert: cert}
     AcmeServer.Account.update_order(config, account_id, updated_order)
 
