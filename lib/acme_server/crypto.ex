@@ -13,9 +13,10 @@ defmodule AcmeServer.Crypto do
     csr
     |> CSR.public_key()
     |> Certificate.new(
-      "/O=Site Encrypt/CN=Acme Server test certificate",
+      "/O=Site Encrypt/CN=#{hd(domains)}",
       ca_cert,
       ca_key,
+      validity: 1,
       extensions: [subject_alt_name: Extension.subject_alt_name(domains)]
     )
     |> X509.to_pem()
