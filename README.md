@@ -17,9 +17,8 @@ Extreme alpha. It's highly unstable, unfinished, there's no documentation, no te
 ## Dependencies
 
 - [Certbot](https://certbot.eff.org/) >= 0.22 (ACME client used to obtain certificate)
-- openssl - used in the local ACME server to sign CSRs
 
-I have plans to replace both with a native implementation in Elixir, but can't promise when will that happen, or if it will happen at all.
+I have plans to replace Certbot with a native implementation in Elixir, but can't promise when will that happen, or if it will happen at all.
 
 
 ## Using with Phoenix
