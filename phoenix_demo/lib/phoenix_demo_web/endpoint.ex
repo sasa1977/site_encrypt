@@ -23,7 +23,7 @@ defmodule PhoenixDemoWeb.Endpoint do
 
   plug Plug.Logger
 
-  plug SiteEncrypt.AcmeChallenge, PhoenixDemoWeb.Certbot.folder()
+  plug SiteEncrypt.AcmeChallenge, PhoenixDemoWeb.Certbot
 
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],

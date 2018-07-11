@@ -62,8 +62,6 @@ defmodule PhoenixDemoWeb.Certbot do
 
   def ssl_keys(), do: SiteEncrypt.Certbot.https_keys(config())
 
-  def folder(), do: Application.app_dir(:phoenix_demo, "priv") |> Path.join("certbot")
-
   @impl SiteEncrypt
   def config() do
     %{
@@ -72,7 +70,7 @@ defmodule PhoenixDemoWeb.Certbot do
       domain: "foo.bar",
       extra_domains: ["www.foo.bar", "blog.foo.bar"],
       email: "admin@foo.bar",
-      base_folder: folder(),
+      base_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("certbot"),
       renew_interval: :timer.hours(6),
       log_level: :info
     }
@@ -98,7 +96,7 @@ defmodule PhoenixDemoWeb.Endpoint do
 
   plug Plug.Logger
 
-  plug SiteEncrypt.AcmeChallenge, PhoenixDemoWeb.Certbot.folder()
+  plug SiteEncrypt.AcmeChallenge, PhoenixDemoWeb.Certbot
 
   # ...
 end
