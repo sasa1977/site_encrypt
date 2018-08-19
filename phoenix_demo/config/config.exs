@@ -14,8 +14,8 @@ config :phoenix_demo, PhoenixDemoWeb.Endpoint,
 
 # Configures Elixir's Logger
 config :logger, :console,
-  format: "$time $metadata[$level] $message\n",
-  metadata: [:user_id]
+  format: "$time $metadata[$level] $metadata $message\n",
+  metadata: [:user_id, :periodic_job]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

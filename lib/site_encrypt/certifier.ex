@@ -1,68 +1,42 @@
 defmodule SiteEncrypt.Certifier do
-  use Parent.GenServer
   alias SiteEncrypt.{Certbot, Logger}
 
-  def start_link(callback) do
-    Parent.GenServer.start_link(
-      __MODULE__,
-      callback,
-      name: name(callback.config().domain)
+  @spec child_spec(module) :: Supervisor.child_spec()
+  def child_spec(callback) do
+    config = callback.config()
+
+    Periodic.child_spec(
+      id: __MODULE__,
+      run: fn -> get_certs(callback) end,
+      initial_delay: 0,
+      every: config.renew_interval,
+      timeout: max(config.renew_interval - :timer.seconds(5), :timer.minutes(1)),
+      overlap?: false,
+      log_level: config.log_level,
+      log_meta: [periodic_job: "certify #{config.domain}"]
     )
   end
 
-  defp name(domain), do: SiteEncrypt.Registry.via_tuple({__MODULE__, domain})
-
-  @impl GenServer
-  def init(callback) do
-    start_fetch(callback)
-    {:ok, %{callback: callback}}
-  end
-
-  @impl GenServer
-  def handle_info(:start_fetch, state) do
-    start_fetch(state.callback)
-    {:noreply, state}
-  end
-
-  def handle_info(other, state), do: super(other, state)
-
-  @impl Parent.GenServer
-  def handle_child_terminated(:fetcher, _meta, _pid, _reason, state) do
-    config = state.callback.config()
-    log(config, "Certbot finished")
-    Process.send_after(self(), :start_fetch, config.renew_interval())
-    {:noreply, state}
-  end
-
-  defp start_fetch(callback) do
+  defp get_certs(callback) do
     config = callback.config()
 
-    if config.run_client? and not Parent.GenServer.child?(:fetcher) do
-      log(config, "Starting certbot")
+    if config.run_client? do
+      case Certbot.ensure_cert(config) do
+        {:error, output} ->
+          Logger.log(:error, "Error obtaining certificate for #{config.domain}:\n#{output}")
 
-      Parent.GenServer.start_child(%{
-        id: :fetcher,
-        start: {Task, :start_link, [fn -> get_certs(callback, config) end]}
-      })
-    end
-  end
+        {:new_cert, output} ->
+          log(config, output)
+          log(config, "Obtained new certificate for #{config.domain}")
 
-  defp get_certs(callback, config) do
-    case Certbot.ensure_cert(config) do
-      {:error, output} ->
-        Logger.log(:error, "Error obtaining certificate for #{config.domain}:\n#{output}")
+          SiteEncrypt.initialize_certs(config)
+          :ssl.clear_pem_cache()
+          callback.handle_new_cert()
 
-      {:new_cert, output} ->
-        log(config, output)
-        log(config, "Obtained new certificate for #{config.domain}")
-
-        SiteEncrypt.initialize_certs(config)
-        :ssl.clear_pem_cache()
-        callback.handle_new_cert()
-
-      {:no_change, output} ->
-        log(config, output)
-        :ok
+        {:no_change, output} ->
+          log(config, output)
+          :ok
+      end
     end
   end
 

@@ -13,7 +13,7 @@ defmodule SiteEncrypt do
           log_level: log_level
         }
 
-  @type log_level :: :none | Logger.level()
+  @type log_level :: nil | Logger.level()
 
   @callback config() :: config
   @callback handle_new_cert() :: any
