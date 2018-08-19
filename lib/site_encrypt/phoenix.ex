@@ -7,9 +7,11 @@ defmodule SiteEncrypt.Phoenix do
   def start_link({callback, endpoint}) do
     config = callback.config()
 
+    SiteEncrypt.initialize_certs(config)
+
     Supervisor.start_link(
       [
-        acme_spec(config, endpoint),
+        acme_server_spec(config, endpoint),
         Supervisor.child_spec(endpoint, id: :endpoint),
         {SiteEncrypt.Certifier, callback}
       ]
@@ -19,18 +21,11 @@ defmodule SiteEncrypt.Phoenix do
     )
   end
 
-  @spec restart_endpoint(SiteEncrypt.config()) :: :ok
-  def restart_endpoint(config) do
-    Supervisor.terminate_child(name(config), :endpoint)
-    Supervisor.restart_child(name(config), :endpoint)
-    :ok
-  end
-
   defp name(config), do: SiteEncrypt.Registry.via_tuple({__MODULE__, config.domain})
 
-  defp acme_spec(%{ca_url: url}, _endpoint) when is_binary(url), do: nil
+  defp acme_server_spec(%{ca_url: url}, _endpoint) when is_binary(url), do: nil
 
-  defp acme_spec(%{ca_url: {:local_acme_server, acme_server_config}} = config, endpoint) do
+  defp acme_server_spec(%{ca_url: {:local_acme_server, acme_server_config}} = config, endpoint) do
     %{port: port, adapter: adapter} = acme_server_config
     SiteEncrypt.Logger.log(config.log_level, "Running local ACME server at port #{port}")
 

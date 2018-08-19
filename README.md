@@ -25,7 +25,7 @@ I have plans to replace Certbot with a native implementation in Elixir, but can'
 
 ### Local development
 
-A basic demo Phoenix project is available [here](https://github.com/sasa1977/site_encrypt/tree/master/phoenix_demo). The commit which adds the support for local development can be found [here](https://github.com/sasa1977/site_encrypt/commit/412d640b73e88a2fccea8af3aa87acb32001b4eb).
+A basic demo Phoenix project is available [here](https://github.com/sasa1977/site_encrypt/tree/master/phoenix_demo).
 
 In a nutshell, you need to do the following things:
 
@@ -60,7 +60,7 @@ Next, you need to create the module which provides the certbot client configurat
 defmodule PhoenixDemoWeb.Certbot do
   @behaviour SiteEncrypt
 
-  def ssl_keys(), do: SiteEncrypt.Certbot.https_keys(config())
+  def https_keys(), do: SiteEncrypt.https_keys(config())
 
   @impl SiteEncrypt
   def config() do
@@ -71,17 +71,16 @@ defmodule PhoenixDemoWeb.Certbot do
       extra_domains: ["www.foo.bar", "blog.foo.bar"],
       email: "admin@foo.bar",
       base_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("certbot"),
+      cert_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("cert"),
       renew_interval: :timer.hours(6),
       log_level: :info
     }
   end
 
   @impl SiteEncrypt
-  def handle_new_cert(certbot_config) do
-    # restarts the endpoint when the cert has been changed
-    SiteEncrypt.Phoenix.restart_endpoint(certbot_config)
-
-    # optionally backup the contents of the folder specified with folder/1
+  def handle_new_cert() do
+    # Optionally backup the folder configured via`:base_folder`.
+    :ok
   end
 
   defp local_acme_server(), do: {:local_acme_server, %{adapter: Plug.Adapters.Cowboy, port: 4002}}
@@ -110,16 +109,9 @@ defmodule PhoenixDemoWeb.Endpoint do
 
   def init(_key, config) do
     # add HTTPS config
-    config = configure_https(config)
+    config = Keyword.put(config, :https, [port: 4001] ++ PhoenixDemoWeb.Certbot.https_keys())
 
     # ...
-  end
-
-  defp configure_https(config) do
-    case PhoenixDemoWeb.Certbot.ssl_keys() do
-      {:ok, keys} -> Keyword.put(config, :https, [port: 4001] ++ keys)
-      :error -> Keyword.put(config, :https, false)
-    end
   end
 end
 ```
@@ -148,13 +140,12 @@ And that's it! At this point you can start the system:
 ```
 $ iex -S mix phx.server
 
+[info] Generating a temporary self-signed certificate. This certificate will be used until a proper certificate is issued by the CA server.
 [info] Running local ACME server at port 4002
 [info] Running PhoenixDemoWeb.Endpoint with Cowboy using http://0.0.0.0:4000
 [info] Starting certbot
 ...
-[info] Obtained new certificate, restarting endpoint
-[info] Running PhoenixDemoWeb.Endpoint with Cowboy using http://0.0.0.0:4000
-[info] Running PhoenixDemoWeb.Endpoint with Cowboy using https://0.0.0.0:4001
+[info] Obtained new certificate for foo.bar
 [info] Certbot finished
 ```
 
@@ -199,7 +190,7 @@ It's up to you to decide how to vary the settings between local development and 
 
 ## Warning
 
-At the moment, I wouldn't advise using this for any critical production, because it's highly untested. I do use it myself to certify [my blog](https://www.theerlangelist.com/), but it's just been used for a few days, and so there are probably many uncovered issues.
+At the moment, I wouldn't advise using this for any critical production, because it's highly untested. I do use it myself to certify [my blog](https://www.theerlangelist.com/), but it's just been used for a few months, and so there are probably many uncovered issues.
 
 
 ## License
