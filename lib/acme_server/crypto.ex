@@ -4,7 +4,7 @@ defmodule AcmeServer.Crypto do
 
   @spec sign_csr!(binary(), AcmeServer.domains()) :: binary() | no_return()
   def sign_csr!(der, domains) do
-    csr = X509.from_der(der, :CertificationRequest)
+    csr = CSR.from_der!(der)
     unless CSR.valid?(csr), do: raise("CSR validation failed")
 
     {ca_key, ca_cert} = ca_key_and_cert()
@@ -12,7 +12,7 @@ defmodule AcmeServer.Crypto do
     csr
     |> CSR.public_key()
     |> server_cert(ca_key, ca_cert, domains)
-    |> X509.to_pem()
+    |> Certificate.to_pem()
   end
 
   def self_signed_chain(domains) do
