@@ -25,7 +25,11 @@ defmodule AcmeServer.Crypto do
       |> PublicKey.derive()
       |> server_cert(ca_key, ca_cert, domains)
 
-    %{ca_cert: ca_cert, server_cert: server_cert, server_key: server_key}
+    %{
+      ca_cert: Certificate.to_pem(ca_cert),
+      server_cert: Certificate.to_pem(server_cert),
+      server_key: PrivateKey.to_pem(server_key)
+    }
   end
 
   defp ca_key_and_cert() do
