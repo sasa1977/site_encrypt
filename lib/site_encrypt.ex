@@ -58,7 +58,7 @@ defmodule SiteEncrypt do
 
     [config.domain | config.extra_domains]
     |> AcmeServer.Crypto.self_signed_chain()
-    |> Stream.map(fn {type, entity} -> {file_name(type), X509.to_pem(entity)} end)
+    |> Stream.map(fn {type, pem} -> {file_name(type), pem} end)
     |> Enum.each(&save_pem!(config, &1))
   end
 
