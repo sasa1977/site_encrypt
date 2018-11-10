@@ -83,7 +83,20 @@ defmodule PhoenixDemoWeb.Certbot do
     :ok
   end
 
+  # If you are running original Cowboy (Phoenix 1.3 or less), then use this implementation
   defp local_acme_server(), do: {:local_acme_server, %{adapter: Plug.Adapters.Cowboy, port: 4002}}
+
+  # Or, if Cowboy2
+  defp local_acme_server(), do: {:local_acme_server, %{adapter: Plug.Adapters.Cowboy2, port: 4002}}
+
+  # If you have upgraded to Phoenix 1.4, then reference Cowboy directly
+  # But, buyer beware, if you are also using `Jason` for your JSON encoder/decoder
+  # Then check on the status of this PR (or a similar one) to add that support
+  # https://github.com/potatosalad/erlang-jose/pull/58/files
+  # If it's still not merged and/or released, you might need to reference that branch
+  # directly in your mix.exs
+  # {:jose, override: true, github: "hauleth/erlang-jose", branch: "patch-1"},
+  defp local_acme_server(), do: {:local_acme_server, %{adapter: Plug.Cowboy, port: 4002}}
 end
 ```
 
