@@ -36,7 +36,7 @@ defmodule SiteEncrypt.Phoenix do
   end
 
   defp acme_server_adapter_spec(Plug.Adapters.Cowboy, port),
-    do: {Plug.Adapters.Cowboy, scheme: :http, options: [port: port, acceptors: 1]}
+    do: {Plug.Adapters.Cowboy, scheme: :http, options: [port: port, transport_options: [num_acceptors: 1]]}
 
   defp dns(config, endpoint) do
     [config.domain | config.extra_domains]
