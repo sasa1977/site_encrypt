@@ -25,8 +25,7 @@ defmodule AcmeServer.JWS do
       [{_jwk, [{true, payload, _jws}]}] ->
         {:ok, %{payload: Jason.decode!(payload), protected: protected}}
 
-      _ ->
-        :error
+        error -> error
     end
   end
 end
