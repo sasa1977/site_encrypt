@@ -188,6 +188,24 @@ Don't use a small `renew_interval`, because you might trip the [rate limit](http
 
 It's up to you to decide how to vary the settings between local development and production. Personally, I use OS env vars, so I can run the `:prod` version which self-certifies on a local machine. The relevant code is available [here](https://github.com/sasa1977/erlangelist/blob/master/site/lib/erlangelist_web/site.ex).
 
+## Restoring a backup
+
+restore previous cert and certbot directories. In the certbot directory, there should be symlinks in the subdirectory `certbot/config/live/MY_DOMAIN/`. There should be 4 symlinks to 4 files (cert.pem, fullchain.pem, privkey.pem and chain.pem). If the symlinks are preserved you have nothing more to do. If they are not.
+
+- go check into `certbot/config/archive/MY_DOMAIN/`
+- you should see some files, at least cert1.pem fullchain1.pem, privkey1.pem and chain1.pem. They correspond to the initially issued certificate. If your certificate has been renewed, you will find also cert2.pem, fulllchain2.pem... You'll have to make the symlink between the latest of these files and the live directory. So go to `certbot/config/live/`
+- type the following (if your certificate has been renewed, replace the 1 with the latest number you have)
+
+```Shell
+rm cert.pem chain.pem fullchain.pem privkey.pem
+ln -s ../../archive/MY_DOMAIN/cert1.pem cert.pem
+ln -s ../../archive/MY_DOMAIN/chain1.pem chain.pem
+ln -s ../../archive/MY_DOMAIN/fullchain1.pem fullchain.pem
+ln -s ../../archive/MY_DOMAIN/privkey1.pem privkey.pem
+```
+
+and you're good to go!
+
 ## Warning
 
 At the moment, I wouldn't advise using this for any critical production, because it's highly untested. I do use it myself to certify [my blog](https://www.theerlangelist.com/), but it's just been used for a few months, and so there are probably many uncovered issues.
