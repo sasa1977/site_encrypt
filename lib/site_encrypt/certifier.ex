@@ -10,10 +10,7 @@ defmodule SiteEncrypt.Certifier do
       run: fn -> get_certs(callback) end,
       initial_delay: 0,
       every: config.renew_interval,
-      timeout: max(config.renew_interval - :timer.seconds(5), :timer.minutes(1)),
-      overlap?: false,
-      log_level: config.log_level,
-      log_meta: [periodic_job: "certify #{config.domain}"]
+      on_overlap: :stop_previous
     )
   end
 
