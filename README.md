@@ -16,7 +16,7 @@ Extreme alpha. It's highly unstable, unfinished, there's no documentation, no te
 
 ## Dependencies
 
-- [Certbot](https://certbot.eff.org/) >= 0.22 (ACME client used to obtain certificate)
+- [Certbot](https://certbot.eff.org/) >= 0.31 (ACME client used to obtain certificate)
 
 I have plans to replace Certbot with a native implementation in Elixir, but can't promise when will that happen, or if it will happen at all.
 
@@ -124,7 +124,7 @@ defmodule PhoenixDemo.Application do
 
   def start(_type, _args) do
     children = [
-      SiteEncrypt.Phoenix.child_spec({PhoenixDemoWeb.Certbot, PhoenixDemoWeb.Endpoint})
+      {SiteEncrypt.Phoenix, {PhoenixDemoWeb.Certbot, PhoenixDemoWeb.Endpoint}}
     ]
 
     opts = [strategy: :one_for_one, name: PhoenixDemo.Supervisor]
