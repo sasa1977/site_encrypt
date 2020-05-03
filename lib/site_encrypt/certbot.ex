@@ -58,7 +58,8 @@ defmodule SiteEncrypt.Certbot do
     )
   end
 
-  defp renew(config), do: certbot_cmd(config, ~w(renew --cert-name #{config.domain}))
+  defp renew(config),
+    do: certbot_cmd(config, ~w(renew --no-random-sleep-on-renew --cert-name #{config.domain}))
 
   defp certbot_cmd(config, options),
     do: System.cmd("certbot", options ++ common_options(config), stderr_to_stdout: true)
