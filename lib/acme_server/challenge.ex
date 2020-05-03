@@ -56,8 +56,6 @@ defmodule AcmeServer.Challenge do
     {:noreply, state}
   end
 
-  def handle_info(other, state), do: super(other, state)
-
   @impl Parent.GenServer
   def handle_child_terminated(:challenge, _meta, _pid, :normal, state), do: {:noreply, state}
 
