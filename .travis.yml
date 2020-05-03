@@ -1,16 +1,16 @@
 language: elixir
 matrix:
   include:
-    - otp_release: 20.1
-      elixir: 1.6
+    - otp_release: 20.2
+      elixir: 1.10
 env:
   global:
     - MIX_HOME=$HOME/.mix
 cache:
   directories:
-  - $HOME/.mix
-  - deps
-  - _build
+    - $HOME/.mix
+    - deps
+    - _build
 script:
   - mix compile --warnings-as-errors
   - MIX_ENV=test mix compile --warnings-as-errors
