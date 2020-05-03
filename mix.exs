@@ -21,7 +21,7 @@ defmodule SiteEncrypt.MixProject do
 
   defp deps do
     [
-      {:parent, "~> 0.4"},
+      {:parent, "~> 0.9"},
       {:plug_cowboy, "~> 2.1", optional: true},
       {:plug, "~> 1.7", optional: true},
       {:jason, "~> 1.0"},
