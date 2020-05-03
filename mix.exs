@@ -25,10 +25,9 @@ defmodule SiteEncrypt.MixProject do
       {:plug_cowboy, "~> 2.1", optional: true},
       {:plug, "~> 1.7", optional: true},
       {:jason, "~> 1.0"},
-      {:jose, "~> 1.8"},
+      {:jose, "~> 1.10"},
       {:x509, "~> 0.3"},
       {:stream_data, "~> 0.1", only: [:dev, :test]},
-
       {:dialyxir, "~> 1.0", runtime: false}
     ]
   end
