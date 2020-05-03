@@ -1,8 +1,6 @@
 defmodule PhoenixDemoWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :phoenix_demo
 
-  socket "/socket", PhoenixDemoWeb.UserSocket
-
   # Serve at "/" the static files from "priv/static" directory.
   #
   # You should set gzip to true if you are running phoenix.digest
@@ -28,7 +26,7 @@ defmodule PhoenixDemoWeb.Endpoint do
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
-    json_decoder: Poison
+    json_decoder: Jason
 
   plug Plug.MethodOverride
   plug Plug.Head

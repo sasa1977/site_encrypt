@@ -5,12 +5,14 @@
 # is restricted to this project.
 use Mix.Config
 
+config :phoenix, :json_library, Jason
+
 # Configures the endpoint
 config :phoenix_demo, PhoenixDemoWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "hCcjh22viE2CoM6q/13ZLiA3nFDNecVkrnnOCmsfmoHTmK57GgSC2k8j9H8KAmhC",
   render_errors: [view: PhoenixDemoWeb.ErrorView, accepts: ~w(html json)],
-  pubsub: [name: PhoenixDemo.PubSub, adapter: Phoenix.PubSub.PG2]
+  pubsub_server: PhoenixDemo.PubSub
 
 # Configures Elixir's Logger
 config :logger, :console,

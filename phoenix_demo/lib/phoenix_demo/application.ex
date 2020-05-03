@@ -5,7 +5,8 @@ defmodule PhoenixDemo.Application do
   # for more information on OTP Applications
   def start(_type, _args) do
     children = [
-      SiteEncrypt.Phoenix.child_spec({PhoenixDemoWeb.Certbot, PhoenixDemoWeb.Endpoint})
+      {Phoenix.PubSub, name: PhoenixDemo.PubSub},
+      {SiteEncrypt.Phoenix, {PhoenixDemoWeb.Certbot, PhoenixDemoWeb.Endpoint}}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
