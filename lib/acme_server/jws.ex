@@ -11,22 +11,9 @@ defmodule AcmeServer.JWS do
 
     key = JOSE.JWK.from(Map.fetch!(protected, "jwk"))
 
-    verification_data = %{
-      "payload" => Map.fetch!(data, "payload"),
-      "signatures" => [
-        %{
-          "protected" => Map.fetch!(data, "protected"),
-          "signature" => Map.fetch!(data, "signature")
-        }
-      ]
-    }
-
-    case JOSE.JWS.verify([key], verification_data) do
-      [{_jwk, [{true, payload, _jws}]}] ->
-        {:ok, %{payload: Jason.decode!(payload), protected: protected}}
-
-      _ ->
-        :error
+    case JOSE.JWS.verify(key, data) do
+      {true, payload, _jws} -> {:ok, %{payload: Jason.decode!(payload), protected: protected}}
+      _ -> :error
     end
   end
 end

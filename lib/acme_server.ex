@@ -64,7 +64,7 @@ defmodule AcmeServer do
     })
   end
 
-  def handle(config, :head, "/new" <> _, _body), do: respond(405, [nonce_header(config)])
+  def handle(config, :head, "/new-nonce", _body), do: respond(200, [nonce_header(config)])
 
   def handle(config, :post, "/new-account", body) do
     account = Account.create(config, client_key(decode_request(config, body)))
@@ -96,15 +96,19 @@ defmodule AcmeServer do
     )
   end
 
-  def handle(config, :get, "/authorizations/" <> order_path, _body) do
+  def handle(config, :post, "/authorizations/" <> order_path, _body) do
     {account_id, order_id} = decode_order_path(order_path)
     order = AcmeServer.Account.get_order!(config, account_id, order_id)
 
-    respond_json(200, %{
-      status: order.status,
-      identifier: %{type: "dns", value: "localhost"},
-      challenges: [http_challenge_data(config, account_id, order)]
-    })
+    respond_json(
+      200,
+      [nonce_header(config)],
+      %{
+        status: order.status,
+        identifier: %{type: "dns", value: "localhost"},
+        challenges: [http_challenge_data(config, account_id, order)]
+      }
+    )
   end
 
   def handle(config, :post, "/challenge/http/" <> order_path, body) do
@@ -141,16 +145,16 @@ defmodule AcmeServer do
     respond_json(200, [nonce_header(config)], order_data(config, account_id, updated_order))
   end
 
-  def handle(config, :get, "/order/" <> order_path, _body) do
+  def handle(config, :post, "/order/" <> order_path, _body) do
     {account_id, order_id} = decode_order_path(order_path)
     order = AcmeServer.Account.get_order!(config, account_id, order_id)
-    respond_json(200, order_data(config, account_id, order))
+    respond_json(200, [nonce_header(config)], order_data(config, account_id, order))
   end
 
-  def handle(config, :get, "/cert/" <> order_path, _body) do
+  def handle(config, :post, "/cert/" <> order_path, _body) do
     {account_id, order_id} = decode_order_path(order_path)
     certificate = AcmeServer.Account.get_order!(config, account_id, order_id).cert
-    respond(200, [], certificate)
+    respond(200, [nonce_header(config)], certificate)
   end
 
   defp http_challenge_data(config, account_id, order) do

@@ -2,6 +2,8 @@ defmodule SiteEncrypt.Application do
   use Application
 
   def start(_type, _args) do
+    :jose.json_module(AcmeServer.JoseJasonAdapter)
+
     Supervisor.start_link(
       [
         SiteEncrypt.Registry,
