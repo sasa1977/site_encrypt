@@ -16,11 +16,11 @@ defmodule SiteEncrypt.Certbot do
     end
   end
 
-  @spec ensure_cert(SiteEncrypt.config()) :: ensure_cert()
-  def ensure_cert(config) do
+  @spec ensure_cert(SiteEncrypt.config(), force_renewal: boolean) :: ensure_cert()
+  def ensure_cert(config, opts \\ []) do
     ensure_folders(config)
     original_keys_sha = keys_sha(config)
-    result = if keys_available?(config), do: renew(config), else: certonly(config)
+    result = if keys_available?(config), do: renew(config, opts), else: certonly(config)
 
     case result do
       {output, 0} ->
@@ -58,13 +58,20 @@ defmodule SiteEncrypt.Certbot do
     )
   end
 
-  defp renew(config),
-    do: certbot_cmd(config, ~w(renew --no-random-sleep-on-renew --cert-name #{config.domain}))
+  defp renew(config, opts) do
+    args =
+      Enum.reduce(opts, ~w(--no-random-sleep-on-renew --cert-name #{config.domain}), &add_arg/2)
 
-  defp certbot_cmd(config, options),
-    do: System.cmd("certbot", options ++ common_options(config), stderr_to_stdout: true)
+    certbot_cmd(config, ["renew" | args])
+  end
 
-  defp common_options(config) do
+  defp add_arg({:force_renewal, false}, args), do: args
+  defp add_arg({:force_renewal, true}, args), do: ["--force-renewal" | args]
+
+  defp certbot_cmd(config, args),
+    do: System.cmd("certbot", args ++ common_args(config), stderr_to_stdout: true)
+
+  defp common_args(config) do
     ~w(
       --server #{ca_url(config.ca_url)}
       --work-dir #{work_folder(config)}
