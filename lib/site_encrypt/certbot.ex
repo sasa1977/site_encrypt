@@ -60,7 +60,11 @@ defmodule SiteEncrypt.Certbot do
 
   defp renew(config, opts) do
     args =
-      Enum.reduce(opts, ~w(--no-random-sleep-on-renew --cert-name #{config.domain}), &add_arg/2)
+      Enum.reduce(
+        opts,
+        ~w(-m #{config.email} --agree-tos --no-random-sleep-on-renew --cert-name #{config.domain}),
+        &add_arg/2
+      )
 
     certbot_cmd(config, ["renew" | args])
   end
