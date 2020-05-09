@@ -2,18 +2,19 @@ defmodule SiteEncrypt do
   require Logger
 
   @type config :: %{
-          run_client?: boolean,
-          ca_url: String.t() | {:local_acme_server, %{port: pos_integer, adapter: module}},
-          domain: String.t(),
-          extra_domains: [String.t()],
-          email: String.t(),
-          base_folder: String.t(),
-          cert_folder: String.t(),
-          renew_interval: pos_integer(),
-          log_level: log_level
+          optional(:run_client?) => boolean,
+          required(:ca_url) => ca_url,
+          required(:domain) => String.t(),
+          optional(:extra_domains) => [String.t()],
+          required(:email) => String.t(),
+          required(:base_folder) => String.t(),
+          required(:cert_folder) => String.t(),
+          optional(:renew_interval) => pos_integer(),
+          optional(:log_level) => log_level
         }
 
-  @type log_level :: nil | Logger.level()
+  @type ca_url :: String.t() | {:local_acme_server, %{port: pos_integer, adapter: module}}
+  @type log_level :: Logger.level()
 
   @callback config() :: config
   @callback handle_new_cert() :: any
@@ -56,7 +57,7 @@ defmodule SiteEncrypt do
         "This certificate will be used until a proper certificate is issued by the CA server."
     )
 
-    [config.domain | config.extra_domains]
+    [config.domain | Map.get(config, :extra_domains, [])]
     |> AcmeServer.Crypto.self_signed_chain()
     |> Stream.map(fn {type, pem} -> {file_name(type), pem} end)
     |> Enum.each(&save_pem!(config, &1))

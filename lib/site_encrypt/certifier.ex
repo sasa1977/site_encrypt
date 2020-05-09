@@ -12,14 +12,14 @@ defmodule SiteEncrypt.Certifier do
       id: __MODULE__,
       run: fn -> get_cert(callback) end,
       initial_delay: 0,
-      every: config.renew_interval,
+      every: Map.get(config, :renew_interval, :timer.hours(6)),
       on_overlap: :stop_previous
     )
   end
 
   defp get_cert(callback) do
     config = callback.config()
-    if config.run_client?, do: do_get_cert(callback, config)
+    if Map.get(config, :run_client?, true), do: do_get_cert(callback, config)
   end
 
   defp do_get_cert(callback, config, opts \\ []) do
@@ -44,5 +44,5 @@ defmodule SiteEncrypt.Certifier do
     end
   end
 
-  defp log(config, output), do: Logger.log(config.log_level, output)
+  defp log(config, output), do: Logger.log(Map.get(config, :log_level, :info), output)
 end

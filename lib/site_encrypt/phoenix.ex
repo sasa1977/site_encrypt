@@ -27,7 +27,11 @@ defmodule SiteEncrypt.Phoenix do
 
   defp acme_server_spec(%{ca_url: {:local_acme_server, acme_server_config}} = config, endpoint) do
     %{port: port, adapter: adapter} = acme_server_config
-    SiteEncrypt.Logger.log(config.log_level, "Running local ACME server at port #{port}")
+
+    SiteEncrypt.Logger.log(
+      Map.get(config, :log_level, :info),
+      "Running local ACME server at port #{port}"
+    )
 
     AcmeServer.Standalone.child_spec(
       adapter: acme_server_adapter_spec(adapter, port),
@@ -41,7 +45,7 @@ defmodule SiteEncrypt.Phoenix do
   end
 
   defp dns(config, endpoint) do
-    [config.domain | config.extra_domains]
+    [config.domain | Map.get(config, :extra_domains, [])]
     |> Enum.map(&{&1, fn -> "localhost:#{endpoint.config(:http) |> Keyword.fetch!(:port)}" end})
     |> Enum.into(%{})
   end

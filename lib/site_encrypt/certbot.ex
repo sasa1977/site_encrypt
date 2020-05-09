@@ -90,7 +90,7 @@ defmodule SiteEncrypt.Certbot do
   defp ca_url(ca_url), do: ca_url
 
   defp domain_params(config) do
-    Enum.map([config.domain | config.extra_domains], &"-d #{&1}")
+    Enum.map([config.domain | Map.get(config, :extra_domains, [])], &"-d #{&1}")
   end
 
   defp keys_folder(config), do: Path.join(~w(#{config_folder(config)} live #{config.domain}))
