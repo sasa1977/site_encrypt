@@ -10,7 +10,9 @@ defmodule SiteEncrypt do
           required(:base_folder) => String.t(),
           required(:cert_folder) => String.t(),
           optional(:renew_interval) => pos_integer(),
-          optional(:log_level) => log_level
+          optional(:log_level) => log_level,
+          optional(:name) => GenServer.name(),
+          optional(:mode) => :auto | :manual
         }
 
   @type ca_url :: String.t() | {:local_acme_server, %{port: pos_integer, adapter: module}}

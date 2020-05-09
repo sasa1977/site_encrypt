@@ -99,9 +99,9 @@ defmodule SiteEncrypt.Certbot do
   defp work_folder(config), do: Path.join(config.base_folder, "work")
   defp webroot_folder(config), do: Path.join(config.base_folder, "webroot")
 
-  defp keyfile(config), do: Path.join(keys_folder(config), "privkey.pem")
-  defp certfile(config), do: Path.join(keys_folder(config), "cert.pem")
-  defp cacertfile(config), do: Path.join(keys_folder(config), "chain.pem")
+  def keyfile(config), do: Path.join(keys_folder(config), "privkey.pem")
+  def certfile(config), do: Path.join(keys_folder(config), "cert.pem")
+  def cacertfile(config), do: Path.join(keys_folder(config), "chain.pem")
 
   defp keys_available?(config),
     do: Enum.all?([keyfile(config), certfile(config), cacertfile(config)], &File.exists?/1)
