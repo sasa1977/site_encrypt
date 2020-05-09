@@ -2,7 +2,11 @@ defmodule SiteEncrypt.Certbot do
   @type https_keys :: [keyfile: String.t(), certfile: String.t(), cacertfile: String.t()]
   @type ensure_cert :: {:new_cert, String.t()} | {:no_change, String.t()} | {:error, String.t()}
 
-  @spec https_keys(map()) :: {:ok, https_keys} | :error
+  @spec keys_available?(SiteEncrypt.config()) :: boolean
+  def keys_available?(config),
+    do: Enum.all?([keyfile(config), certfile(config), cacertfile(config)], &File.exists?/1)
+
+  @spec https_keys(SiteEncrypt.config()) :: {:ok, https_keys} | :error
   def https_keys(config) do
     if keys_available?(config) do
       {:ok,
@@ -99,12 +103,9 @@ defmodule SiteEncrypt.Certbot do
   defp work_folder(config), do: Path.join(config.base_folder, "work")
   defp webroot_folder(config), do: Path.join(config.base_folder, "webroot")
 
-  def keyfile(config), do: Path.join(keys_folder(config), "privkey.pem")
-  def certfile(config), do: Path.join(keys_folder(config), "cert.pem")
-  def cacertfile(config), do: Path.join(keys_folder(config), "chain.pem")
-
-  defp keys_available?(config),
-    do: Enum.all?([keyfile(config), certfile(config), cacertfile(config)], &File.exists?/1)
+  defp keyfile(config), do: Path.join(keys_folder(config), "privkey.pem")
+  defp certfile(config), do: Path.join(keys_folder(config), "cert.pem")
+  defp cacertfile(config), do: Path.join(keys_folder(config), "chain.pem")
 
   defp keys_sha(config) do
     case https_keys(config) do

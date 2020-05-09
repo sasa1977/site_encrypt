@@ -1,9 +1,11 @@
 defmodule SiteEncrypt.Certifier do
   alias SiteEncrypt.{Certbot, Logger}
 
+  @spec force_renew(module) :: :ok | {:error, String.t()}
   def force_renew(callback),
     do: do_get_cert(callback, callback.config(), force_renewal: true)
 
+  @spec tick_at(GenServer.name(), DateTime.t()) :: :ok | {:error, any}
   def tick_at(name, datetime) do
     :persistent_term.put(__MODULE__, datetime)
 
@@ -19,6 +21,15 @@ defmodule SiteEncrypt.Certifier do
   @spec child_spec(module) :: Supervisor.child_spec()
   def child_spec(callback) do
     config = callback.config()
+
+    renew_interval_ms = Map.get(config, :renew_interval, :timer.hours(24))
+
+    if rem(renew_interval_ms, 1000) != 0,
+      do: raise("renew interval must be divisible by 1000 (i.e. expressed in seconds)")
+
+    if renew_interval_ms < 1000,
+      do: raise("renew interval must be larger than 1 second")
+
     renew_interval = div(Map.get(config, :renew_interval, :timer.hours(24)), 1000)
 
     periodic_opts =
@@ -27,11 +38,8 @@ defmodule SiteEncrypt.Certifier do
         run: fn -> get_cert(callback) end,
         every: :timer.seconds(1),
         when: fn ->
-          not Enum.all?(
-            ~w/keyfile certfile cacertfile/a,
-            &File.exists?(apply(Certbot, &1, [config]))
-          ) or
-            utc_now() |> DateTime.to_unix() |> rem(renew_interval) == 0
+          utc_now() |> DateTime.to_unix() |> rem(renew_interval) == 0 or
+            not Certbot.keys_available?(config)
         end,
         on_overlap: :ignore,
         timeout: :timer.minutes(1)

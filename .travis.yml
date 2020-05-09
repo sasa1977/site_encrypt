@@ -11,6 +11,12 @@ cache:
     - $HOME/.mix
     - deps
     - _build
+before_install:
+  - sudo apt-get install software-properties-common
+  - sudo add-apt-repository universe -y
+  - sudo add-apt-repository ppa:certbot/certbot -y
+  - sudo apt-get update
+  - sudo apt-get install -y certbot
 script:
   - mix compile --warnings-as-errors
   - MIX_ENV=test mix compile --warnings-as-errors
