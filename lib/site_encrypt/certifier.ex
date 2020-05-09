@@ -26,6 +26,7 @@ defmodule SiteEncrypt.Certifier do
     case Certbot.ensure_cert(config, opts) do
       {:error, output} ->
         Logger.log(:error, "Error obtaining certificate for #{config.domain}:\n#{output}")
+        {:error, output}
 
       {:new_cert, output} ->
         log(config, output)
@@ -34,6 +35,8 @@ defmodule SiteEncrypt.Certifier do
         SiteEncrypt.initialize_certs(config)
         :ssl.clear_pem_cache()
         callback.handle_new_cert()
+
+        :ok
 
       {:no_change, output} ->
         log(config, output)
