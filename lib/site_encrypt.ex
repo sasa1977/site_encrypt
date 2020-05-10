@@ -12,13 +12,14 @@ defmodule SiteEncrypt do
     renew_interval: quote(do: pos_integer()),
     log_level: quote(do: log_level),
     mode: quote(do: :auto | :manual),
-    callback: quote(do: __MODULE__)
+    callback: quote(do: __MODULE__),
+    assigns: quote(do: map)
   ]
 
   @typedoc false
   @type config :: %{unquote_splicing(config_type)}
 
-  @type certification :: unquote(Keyword.drop(config_type, ~w/callback/a))
+  @type certification :: unquote(Keyword.drop(config_type, ~w/callback assigns/a))
 
   @type id :: any
   @type ca_url :: String.t() | {:local_acme_server, [port: pos_integer]}
@@ -60,7 +61,8 @@ defmodule SiteEncrypt do
       renew_interval: :timer.hours(24),
       extra_domains: [],
       log_level: :info,
-      mode: :auto
+      mode: :auto,
+      assigns: %{}
     }
   end
 

@@ -7,7 +7,7 @@ defmodule SiteEncrypt.Certifier do
 
   @spec tick_at(SiteEncrypt.id(), DateTime.t()) :: :ok | {:error, any}
   def tick_at(id, datetime) do
-    :persistent_term.put(__MODULE__, datetime)
+    :persistent_term.put({__MODULE__, id}, datetime)
 
     case Periodic.Test.sync_tick(Registry.name(id, :certifier), :infinity) do
       {:ok, :normal} -> :ok
@@ -15,7 +15,7 @@ defmodule SiteEncrypt.Certifier do
       error -> error
     end
   after
-    :persistent_term.erase({__MODULE__, datetime})
+    :persistent_term.erase({{__MODULE__, id}, datetime})
   end
 
   @spec child_spec(SiteEncrypt.config()) :: Supervisor.child_spec()
@@ -27,7 +27,7 @@ defmodule SiteEncrypt.Certifier do
       run: fn -> get_cert(config) end,
       every: :timer.seconds(1),
       when: fn ->
-        utc_now() |> DateTime.to_unix() |> rem(renew_interval_sec) == 0 or
+        utc_now(config.id) |> DateTime.to_unix() |> rem(renew_interval_sec) == 0 or
           not Certbot.keys_available?(config)
       end,
       on_overlap: :ignore,
@@ -37,7 +37,7 @@ defmodule SiteEncrypt.Certifier do
     )
   end
 
-  defp utc_now, do: :persistent_term.get(__MODULE__, DateTime.utc_now())
+  defp utc_now(id), do: :persistent_term.get({__MODULE__, id}, DateTime.utc_now())
 
   defp get_cert(config, opts \\ []) do
     case Certbot.ensure_cert(config, opts) do

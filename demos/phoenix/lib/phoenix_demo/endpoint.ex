@@ -16,8 +16,7 @@ defmodule PhoenixDemo.Endpoint do
        url: [scheme: "https", host: "localhost", port: 4001],
        http: [port: 4000],
        https: [port: 4001] ++ SiteEncrypt.https_keys(__MODULE__),
-       server: true,
-       mode: unquote(if Mix.env() == :test, do: :manual, else: :auto)
+       server: true
      )}
   end
 
@@ -25,7 +24,8 @@ defmodule PhoenixDemo.Endpoint do
   def certification do
     common_settings = [
       base_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("certbot"),
-      cert_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("cert")
+      cert_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("cert"),
+      mode: unquote(if Mix.env() == :test, do: :manual, else: :auto)
     ]
 
     target_machine_settings =

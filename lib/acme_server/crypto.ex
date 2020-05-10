@@ -44,7 +44,7 @@ defmodule AcmeServer.Crypto do
       "/O=Site Encrypt/CN=#{hd(domains)}",
       ca_cert,
       ca_key,
-      validity: 1,
+      validity: 1000 * 365,
       extensions: [subject_alt_name: Extension.subject_alt_name(domains)]
     )
   end

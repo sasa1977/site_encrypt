@@ -2,22 +2,39 @@ defmodule SiteEncrypt.Phoenix do
   use Supervisor
 
   def start_link({callback, opts}) do
-    config = SiteEncrypt.normalized_config(callback, id: Keyword.get(opts, :endpoint, callback))
-    Supervisor.start_link(__MODULE__, {config, opts})
+    endpoint = Keyword.get(opts, :endpoint, callback)
+
+    config =
+      update_in(
+        SiteEncrypt.normalized_config(callback, id: endpoint).assigns,
+        &Map.put(&1, :endpoint, endpoint)
+      )
+
+    Supervisor.start_link(
+      [
+        %{
+          id: :site,
+          type: :supervisor,
+          start: {Supervisor, :start_link, [__MODULE__, config]}
+        }
+      ],
+      strategy: :one_for_one,
+      name: SiteEncrypt.Registry.name(config.id, :root)
+    )
   end
 
+  @doc false
   def start_link(callback), do: start_link({callback, []})
 
   @impl Supervisor
-  def init({config, opts}) do
+  def init(config) do
     with :ok <- SiteEncrypt.Registry.register_main_site(config) do
-      endpoint = Keyword.get(opts, :endpoint, config.callback)
       SiteEncrypt.initialize_certs(config)
 
       Supervisor.init(
         [
-          acme_server_spec(config, endpoint),
-          Supervisor.child_spec(endpoint, id: :endpoint),
+          acme_server_spec(config),
+          Supervisor.child_spec(config.assigns.endpoint, id: :endpoint),
           {SiteEncrypt.Certifier, config}
         ]
         |> Enum.reject(&is_nil/1),
@@ -26,24 +43,27 @@ defmodule SiteEncrypt.Phoenix do
     end
   end
 
-  defp acme_server_spec(%{ca_url: url}, _endpoint) when is_binary(url), do: nil
+  defp acme_server_spec(%{ca_url: url}) when is_binary(url), do: nil
 
-  defp acme_server_spec(%{ca_url: {:local_acme_server, acme_server_config}} = config, endpoint) do
+  defp acme_server_spec(%{ca_url: {:local_acme_server, acme_server_config}} = config) do
     port = Keyword.fetch!(acme_server_config, :port)
     SiteEncrypt.Logger.log(config.log_level, "Running local ACME server at port #{port}")
 
     AcmeServer.Standalone.child_spec(
       adapter: acme_server_adapter_spec(port),
-      dns: dns(config, endpoint)
+      dns: dns(config)
     )
   end
 
   defp acme_server_adapter_spec(port),
     do: {Plug.Cowboy, scheme: :http, options: [port: port, transport_options: [num_acceptors: 1]]}
 
-  defp dns(config, endpoint) do
+  defp dns(config) do
     [config.domain | config.extra_domains]
-    |> Enum.map(&{&1, fn -> "localhost:#{endpoint.config(:http) |> Keyword.fetch!(:port)}" end})
+    |> Enum.map(
+      &{&1,
+       fn -> "localhost:#{config.assigns.endpoint.config(:http) |> Keyword.fetch!(:port)}" end}
+    )
     |> Enum.into(%{})
   end
 end

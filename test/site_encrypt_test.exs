@@ -3,49 +3,12 @@ defmodule SiteEncryptTest do
   alias __MODULE__.TestEndpoint
 
   test "certification" do
-    File.rm_rf(Keyword.fetch!(TestEndpoint.certification(), :base_folder))
-    File.rm_rf(Keyword.fetch!(TestEndpoint.certification(), :cert_folder))
+    start_supervised!({SiteEncrypt.Phoenix, TestEndpoint}, restart: :permanent)
 
-    start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
-
-    # self-signed certificate
-    first_cert = get_cert()
-
-    # obtains the first certificate irrespective of the time
-    log =
-      capture_log(fn ->
-        assert SiteEncrypt.Certifier.tick_at(TestEndpoint, ~U[2020-01-01 01:02:03Z]) ==
-                 :ok
-      end)
-
-    assert log =~ "Obtained new certificate for localhost"
-
-    second_cert = get_cert()
-    assert second_cert != first_cert
-
-    # renews the certificate at midnight UTC
-    log =
-      capture_log(fn ->
-        assert SiteEncrypt.Certifier.tick_at(TestEndpoint, ~U[2020-01-01 00:00:00Z]) ==
-                 :ok
-      end)
-
-    assert log =~ "Congratulations, all renewals succeeded."
-    assert get_cert() not in [first_cert, second_cert]
-  end
-
-  defp capture_log(fun) do
-    Logger.configure(level: :debug)
-    ExUnit.CaptureLog.capture_log(fun)
-  after
-    Logger.configure(level: :warning)
-  end
-
-  defp get_cert do
-    {:ok, socket} = :ssl.connect('localhost', 4001, [], :timer.seconds(5))
-    {:ok, der_cert} = :ssl.peercert(socket)
-    :ssl.close(socket)
-    der_cert
+    SiteEncrypt.Phoenix.Test.verify_certification(TestEndpoint, [
+      ~U[2020-01-01 00:00:00Z],
+      ~U[2020-02-01 00:00:00Z]
+    ])
   end
 
   defmodule TestEndpoint do
