@@ -1,37 +1,33 @@
 defmodule SiteEncrypt.Phoenix do
-  @spec child_spec({module, module}) :: Supervisor.child_spec()
-  def child_spec(opts) do
-    %{id: __MODULE__, type: :supervisor, start: {__MODULE__, :start_link, [opts]}}
-  end
+  use Supervisor
+  alias SiteEncrypt.Registry
 
-  def start_link({callback, endpoint}) do
-    config = callback.config()
+  def start_link({callback, _endpoint} = arg),
+    do: Supervisor.start_link(__MODULE__, arg, name: Registry.name(callback))
+
+  @impl Supervisor
+  def init({callback, endpoint}) do
+    config = Registry.config(callback)
 
     SiteEncrypt.initialize_certs(config)
 
-    Supervisor.start_link(
+    Supervisor.init(
       [
         acme_server_spec(config, endpoint),
         Supervisor.child_spec(endpoint, id: :endpoint),
         {SiteEncrypt.Certifier, callback}
       ]
       |> Enum.reject(&is_nil/1),
-      name: name(config),
       strategy: :rest_for_one
     )
   end
-
-  defp name(config), do: SiteEncrypt.Registry.via_tuple({__MODULE__, config.domain})
 
   defp acme_server_spec(%{ca_url: url}, _endpoint) when is_binary(url), do: nil
 
   defp acme_server_spec(%{ca_url: {:local_acme_server, acme_server_config}} = config, endpoint) do
     %{port: port, adapter: adapter} = acme_server_config
 
-    SiteEncrypt.Logger.log(
-      Map.get(config, :log_level, :info),
-      "Running local ACME server at port #{port}"
-    )
+    SiteEncrypt.Logger.log(config.log_level, "Running local ACME server at port #{port}")
 
     AcmeServer.Standalone.child_spec(
       adapter: acme_server_adapter_spec(adapter, port),
@@ -45,7 +41,7 @@ defmodule SiteEncrypt.Phoenix do
   end
 
   defp dns(config, endpoint) do
-    [config.domain | Map.get(config, :extra_domains, [])]
+    [config.domain | config.extra_domains]
     |> Enum.map(&{&1, fn -> "localhost:#{endpoint.config(:http) |> Keyword.fetch!(:port)}" end})
     |> Enum.into(%{})
   end

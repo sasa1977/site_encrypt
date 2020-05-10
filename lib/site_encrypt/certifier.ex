@@ -1,9 +1,9 @@
 defmodule SiteEncrypt.Certifier do
-  alias SiteEncrypt.{Certbot, Logger}
+  alias SiteEncrypt.{Certbot, Logger, Registry}
 
   @spec force_renew(module) :: :ok | {:error, String.t()}
   def force_renew(callback),
-    do: do_get_cert(callback, callback.config(), force_renewal: true)
+    do: do_get_cert(callback, Registry.config(callback), force_renewal: true)
 
   @spec tick_at(GenServer.name(), DateTime.t()) :: :ok | {:error, any}
   def tick_at(name, datetime) do
@@ -20,17 +20,9 @@ defmodule SiteEncrypt.Certifier do
 
   @spec child_spec(module) :: Supervisor.child_spec()
   def child_spec(callback) do
-    config = callback.config()
+    config = Registry.config(callback)
 
-    renew_interval_ms = Map.get(config, :renew_interval, :timer.hours(24))
-
-    if rem(renew_interval_ms, 1000) != 0,
-      do: raise("renew interval must be divisible by 1000 (i.e. expressed in seconds)")
-
-    if renew_interval_ms < 1000,
-      do: raise("renew interval must be larger than 1 second")
-
-    renew_interval = div(Map.get(config, :renew_interval, :timer.hours(24)), 1000)
+    renew_interval_sec = div(config.renew_interval, 1000)
 
     periodic_opts =
       [
@@ -38,13 +30,18 @@ defmodule SiteEncrypt.Certifier do
         run: fn -> get_cert(callback) end,
         every: :timer.seconds(1),
         when: fn ->
-          utc_now() |> DateTime.to_unix() |> rem(renew_interval) == 0 or
+          utc_now() |> DateTime.to_unix() |> rem(renew_interval_sec) == 0 or
             not Certbot.keys_available?(config)
         end,
         on_overlap: :ignore,
         timeout: :timer.minutes(1)
       ]
-      |> Keyword.merge(config |> Map.take(~w/name mode/a) |> Map.to_list())
+      |> Keyword.merge(
+        config
+        |> Map.take(~w/name mode/a)
+        |> Map.to_list()
+        |> Enum.reject(&(&1 == {:name, nil}))
+      )
 
     Periodic.child_spec(periodic_opts)
   end
@@ -52,8 +49,8 @@ defmodule SiteEncrypt.Certifier do
   defp utc_now, do: :persistent_term.get(__MODULE__, DateTime.utc_now())
 
   defp get_cert(callback) do
-    config = callback.config()
-    if Map.get(config, :run_client?, true), do: do_get_cert(callback, config)
+    config = Registry.config(callback)
+    if config.run_client?, do: do_get_cert(callback, config)
   end
 
   defp do_get_cert(callback, config, opts \\ []) do
@@ -78,5 +75,5 @@ defmodule SiteEncrypt.Certifier do
     end
   end
 
-  defp log(config, output), do: Logger.log(Map.get(config, :log_level, :info), output)
+  defp log(config, output), do: Logger.log(config.log_level, output)
 end

@@ -59,7 +59,7 @@ defmodule SiteEncrypt do
         "This certificate will be used until a proper certificate is issued by the CA server."
     )
 
-    [config.domain | Map.get(config, :extra_domains, [])]
+    [config.domain | config.extra_domains]
     |> AcmeServer.Crypto.self_signed_chain()
     |> Stream.map(fn {type, pem} -> {file_name(type), pem} end)
     |> Enum.each(&save_pem!(config, &1))

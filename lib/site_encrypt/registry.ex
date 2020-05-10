@@ -9,5 +9,35 @@ defmodule SiteEncrypt.Registry do
     )
   end
 
-  def via_tuple(key), do: {:via, Registry, {__MODULE__, key}}
+  def name(callback),
+    do: {:via, Registry, {__MODULE__, callback, normalized_config(callback)}}
+
+  @spec config(module) :: SiteEncrypt.config()
+  def config(callback) do
+    [{_pid, config}] = Registry.lookup(__MODULE__, callback)
+    config
+  end
+
+  defp normalized_config(callback) do
+    config = Map.merge(defaults(), callback.config())
+
+    if rem(config.renew_interval, 1000) != 0,
+      do: raise("renew interval must be divisible by 1000 (i.e. expressed in seconds)")
+
+    if config.renew_interval < 1000,
+      do: raise("renew interval must be larger than 1 second")
+
+    config
+  end
+
+  defp defaults do
+    %{
+      run_client?: true,
+      renew_interval: :timer.hours(24),
+      extra_domains: [],
+      log_level: :info,
+      name: nil,
+      mode: :auto
+    }
+  end
 end
