@@ -12,30 +12,22 @@ In addition, the library ships with a basic ACME v2 server to facilitate local d
 
 ## Status
 
-Extreme alpha. It's highly unstable, unfinished, there's no documentation, no tests, and the API can change radically. Use at your own peril :-)
+- The library is tested in a [simple production](https://www.theerlangelist.com), where it has been constantly running since mid 2018.
+- The API is not stable. Expect breaking changes in the future.
+- The documentation is non-existant.
+- The tests are basic.
+
+Use at your own peril :-)
 
 ## Dependencies
 
 - [Certbot](https://certbot.eff.org/) >= 0.31 (ACME client used to obtain certificate)
 
-I have plans to replace Certbot with a native implementation in Elixir, but can't promise when will that happen, or if it will happen at all.
-
-
 ## Using with Phoenix
 
 ### Local development
 
-A basic demo Phoenix project is available [here](https://github.com/sasa1977/site_encrypt/tree/master/phoenix_demo).
-
-In a nutshell, you need to do the following things:
-
-- Add the dependency
-- Create the certbot callback module
-- Add ACME challenge plug into the plug pipeline
-- Adapt endpoint configuration
-- Start your endpoint through SiteEncrypt
-
-Let's break this one step at a time.
+A basic demo Phoenix project is available [here](./demos/phoenix).
 
 First, you need to add the dependency to `mix.exs`:
 
@@ -54,79 +46,63 @@ end
 
 Don't forget to invoke `mix.deps` after that.
 
-Next, you need to create the module which provides the certbot client configuration:
+Next, extend your endpoint to implement `SiteEncrypt` behaviour:
 
 ```elixir
-defmodule PhoenixDemoWeb.Certbot do
+defmodule PhoenixDemo.Endpoint do
+  # ...
+
   @behaviour SiteEncrypt
 
-  def https_keys(), do: SiteEncrypt.https_keys(config())
+  # ...
 
   @impl SiteEncrypt
-  def config() do
-    %{
-      run_client?: unquote(Mix.env() != :test),
-      ca_url: local_acme_server(),
-      domain: "foo.bar",
-      extra_domains: ["www.foo.bar", "blog.foo.bar"],
-      email: "admin@foo.bar",
+  def certification do
+    [
       base_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("certbot"),
       cert_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("cert"),
-      renew_interval: :timer.hours(6),
-      log_level: :info
-    }
+      ca_url: {:local_acme_server, port: 4002},
+      domain: "localhost",
+      email: "admin@foo.bar"
+      mode: unquote(if Mix.env() == :test, do: :manual, else: :auto)
+    ]
   end
 
   @impl SiteEncrypt
-  def handle_new_cert() do
-    # Optionally backup the folder configured via`:base_folder`.
+  def handle_new_cert do
+    # Invoked after certificate has been obtained. Consider backing up the content of your base_folder here.
     :ok
   end
 
-  defp local_acme_server(), do: {:local_acme_server, %{adapter: Plug.Adapters.Cowboy, port: 4002}}
-end
-```
-
-Then, add the ACME challenge plug in your endpoint. I recommend to add it immediately after the logger plug:
-
-```elixir
-defmodule PhoenixDemoWeb.Endpoint do
-  # ...
-
-  plug Plug.Logger
-
-  plug SiteEncrypt.AcmeChallenge, PhoenixDemoWeb.Certbot
-
   # ...
 end
 ```
 
-In your endpoint you need to configure HTTPS if the cert is present:
+Include `plug SiteEncrypt.AcmeChallenge, __MODULE__` in your endpoint. If you have `plug Plug.SSL` specified, it has to be provided after `SiteEncrypt.AcmeChallenge`.
 
-```elixir
-defmodule PhoenixDemoWeb.Endpoint do
+Configure https:
+
+```
+defmodule PhoenixDemo.Endpoint do
   # ...
 
+  @impl Phoenix.Endpoint
   def init(_key, config) do
-    # add HTTPS config
-    config = Keyword.put(config, :https, [port: 4001] ++ PhoenixDemoWeb.Certbot.https_keys())
-
-    # ...
+    {:ok, Keyword.merge(config, https: [port: 4001] ++ SiteEncrypt.https_keys(__MODULE__))}
   end
+
+  # ...
 end
 ```
 
-And finally, you need to start the endpoint via `SiteEncrypt`:
+Finally, you need to start the endpoint via `SiteEncrypt`:
 
 ```elixir
 defmodule PhoenixDemo.Application do
   use Application
 
   def start(_type, _args) do
-    children = [
-      {SiteEncrypt.Phoenix, {PhoenixDemoWeb.Certbot, PhoenixDemoWeb.Endpoint}}
-    ]
-
+    children = [{SiteEncrypt.Phoenix, PhoenixDemo.Endpoint}]
     opts = [strategy: :one_for_one, name: PhoenixDemo.Supervisor]
     Supervisor.start_link(children, opts)
   end
@@ -140,57 +116,72 @@ And that's it! At this point you can start the system:
 ```
 $ iex -S mix phx.server
 
-[info] Generating a temporary self-signed certificate. This certificate will be used until a proper certificate is issued by the CA server.
-[info] Running local ACME server at port 4002
-[info] Running PhoenixDemoWeb.Endpoint with Cowboy using http://0.0.0.0:4000
-[info] Starting certbot
-...
-[info] Obtained new certificate for foo.bar
-[info] Certbot finished
+22:10:13.938 [info]  Generating a temporary self-signed certificate. This certificate will be used until a proper certificate is issued by the CA server.
+22:10:14.321 [info]  Running local ACME server at port 4002
+22:10:14.356 [info]  Running PhoenixDemo.Endpoint with cowboy 2.7.0 at 0.0.0.0:4000 (http)
+22:10:14.380 [info]  Running PhoenixDemo.Endpoint with cowboy 2.7.0 at 0.0.0.0:4001 (https)
+
+# wait for about 10 seconds
+
+# ...
+22:10:20.568 [info]  Obtained new certificate for localhost
 ```
 
 And visit your certified site at https://localhost:4001
 
-The certificate issued by the integrated ACME server expires after one day. Therefore, if you restart the site, it will be renewed.
+The certificate issued by the integrated ACME server expires after 1000 years. Therefore, if you restart the site, the certificate won't be renewed.
 
-If something goes wrong, usually if you abruptly took down the system in the middle of the certification, the certbot might not work again. In this case, you can just delete the contents of the certbot folder (as defined in `PhoenixDemoWeb.Certbot.folder/1`).
+If something goes wrong, usually if you abruptly took down the system in the middle of the certification, the certbot might not work again. In this case, you can just delete the contents of the certbot folder.
 
 Of course, in real production you want to backup this folder after every change, and restore it if something is corrupt.
+
+#### Testing
+
+It's possible to add an automated test of the certification:
+
+```elixir
+defmodule PhoenixDemo.EndpointTest do
+  use ExUnit.Case, async: false
+
+  test "certification" do
+    # This will verify the first certification, as well as renewals.
+    SiteEncrypt.Phoenix.Test.verify_certification(PhoenixDemo.Endpoint, [
+      ~U[2020-01-01 00:00:00Z],
+      ~U[2020-02-01 00:00:00Z]
+    ])
+  end
+end
+
+```
 
 ### Production
 
 To make it work in production, you need to own the domain and run your site there.
 
-You need to change some parameters in `config/1` in the certbot module:
+You need to change some parameters in `certification/1` callback.
 
 ```elixir
-def config() do
-  %{
-    ca_url: proper_url,
-    domain: your_domain,
-    extra_domains: other_domains,
-    email: your_email,
-
+def certification() do
+  [
+    ca_url: "https://acme-v02.api.letsencrypt.org/directory",
+    domain: "<DOMAIN NAME>",
+    email: "<ADMIN EMAIL>"
     # other parameters can remain the same
-  }
+  ]
 end
 ```
 
-For `ca_url`, you can provide https://acme-staging-v02.api.letsencrypt.org/directory (staging) or https://acme-v02.api.letsencrypt.org/directory (production). Provide the complete URL.
+For staging, you can use https://acme-staging-v02.api.letsencrypt.org/directory. Make sure to change the domain name as well.
 
-I strongly advise to try it with the staging version first. If that works, then you can switch `ca_url` to production. Before you make that switch, you'll need to remove the certbot folder defined in `PhoenixDemoWeb.Certbot.folder/1`.
+In both cases (staging and production certification), the site must be publicly reachable at `http://<DOMAIN NAME>`.
 
-You can also consider trying with a locally running [boulder server](https://github.com/letsencrypt/boulder) first. Setting it up requires a couple of manual steps, but it was relatively straightforward. Ping me if you get stuck here.
+Once you have your production cert, make sure to backup the entire contents of the certbot folder. If you're moving to the new machine, you should restore the backup to the certbot folder (see below).
 
-Once you have your proper cert, make sure to backup the entire contents of the certbot folder. If you're moving to the new machine, you should probably restore the backup to the certbot folder.
-
-Don't use a small `renew_interval`, because you might trip the [rate limit](https://letsencrypt.org/docs/rate-limits/).
-
-It's up to you to decide how to vary the settings between local development and production. Personally, I use OS env vars, so I can run the `:prod` version which self-certifies on a local machine. The relevant code is available [here](https://github.com/sasa1977/erlangelist/blob/master/site/lib/erlangelist_web/site.ex).
+It's up to you to decide how to vary the settings between local development and production.
 
 ## Restoring a backup
 
-restore previous cert and certbot directories. In the certbot directory, there should be symlinks in the subdirectory `certbot/config/live/MY_DOMAIN/`. There should be 4 symlinks to 4 files (cert.pem, fullchain.pem, privkey.pem and chain.pem). If the symlinks are preserved you have nothing more to do. If they are not.
+Restore previous cert and certbot directories. In the certbot directory, there should be symlinks in the subdirectory `certbot/config/live/MY_DOMAIN/`. There should be 4 symlinks to 4 files (cert.pem, fullchain.pem, privkey.pem and chain.pem). If the symlinks are preserved you have nothing more to do. If they are not.
 
 - go check into `certbot/config/archive/MY_DOMAIN/`
 - you should see some files, at least cert1.pem fullchain1.pem, privkey1.pem and chain1.pem. They correspond to the initially issued certificate. If your certificate has been renewed, you will find also cert2.pem, fulllchain2.pem... You'll have to make the symlink between the latest of these files and the live directory. So go to `certbot/config/live/`
@@ -205,11 +196,6 @@ ln -s ../../archive/MY_DOMAIN/privkey1.pem privkey.pem
 ```
 
 and you're good to go!
-
-## Warning
-
-At the moment, I wouldn't advise using this for any critical production, because it's highly untested. I do use it myself to certify [my blog](https://www.theerlangelist.com/), but it's just been used for a few months, and so there are probably many uncovered issues.
-
 
 ## License
 
