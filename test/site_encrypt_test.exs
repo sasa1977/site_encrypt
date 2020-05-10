@@ -6,7 +6,7 @@ defmodule SiteEncryptTest do
     File.rm_rf(TestEndpoint.certification_config().base_folder)
     File.rm_rf(TestEndpoint.certification_config().cert_folder)
 
-    start_supervised!({SiteEncrypt.Phoenix, {TestEndpoint, TestEndpoint}})
+    start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
 
     # self-signed certificate
     first_cert = get_cert()
@@ -62,15 +62,13 @@ defmodule SiteEncryptTest do
        Keyword.merge(config,
          url: [scheme: "https", host: "localhost", port: 4001],
          http: [port: 4000],
-         https: [port: 4001] ++ https_keys(),
+         https: [port: 4001] ++ SiteEncrypt.https_keys(__MODULE__),
          server: true
        )}
     end
 
-    defp https_keys(), do: SiteEncrypt.https_keys(certification_config())
-
     @impl SiteEncrypt
-    def certification_config() do
+    def certification_config do
       %{
         ca_url: local_acme_server(),
         domain: "localhost",

@@ -2,11 +2,14 @@ defmodule SiteEncrypt.Phoenix do
   use Supervisor
   alias SiteEncrypt.Registry
 
-  def start_link({callback, _endpoint} = arg),
+  def start_link({callback, _opts} = arg),
     do: Supervisor.start_link(__MODULE__, arg, name: Registry.name(callback))
 
+  def start_link(callback), do: start_link({callback, []})
+
   @impl Supervisor
-  def init({callback, endpoint}) do
+  def init({callback, opts}) do
+    endpoint = Keyword.get(opts, :endpoint, callback)
     config = Registry.store_config(callback)
 
     SiteEncrypt.initialize_certs(config)

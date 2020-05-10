@@ -21,7 +21,10 @@ defmodule SiteEncrypt do
   @callback certification_config() :: config
   @callback handle_new_cert() :: any
 
-  def https_keys(config) do
+  @spec https_keys(module) :: [keyfile: Path.t(), certfile: Path.t(), cacertfile: Path.t()]
+  def https_keys(callback) do
+    config = SiteEncrypt.Registry.config(callback)
+
     [
       keyfile: Path.join(config.cert_folder, "privkey.pem"),
       certfile: Path.join(config.cert_folder, "cert.pem"),
@@ -29,6 +32,7 @@ defmodule SiteEncrypt do
     ]
   end
 
+  @doc false
   def initialize_certs(config) do
     File.mkdir_p!(config.cert_folder)
 
