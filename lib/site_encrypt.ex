@@ -18,7 +18,7 @@ defmodule SiteEncrypt do
   @type ca_url :: String.t() | {:local_acme_server, %{port: pos_integer, adapter: module}}
   @type log_level :: Logger.level()
 
-  @callback config() :: config
+  @callback certification_config() :: config
   @callback handle_new_cert() :: any
 
   def https_keys(config) do

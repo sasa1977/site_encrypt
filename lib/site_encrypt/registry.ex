@@ -10,7 +10,7 @@ defmodule SiteEncrypt.Registry do
   end
 
   def name(callback),
-    do: {:via, Registry, {__MODULE__, callback, normalized_config(callback)}}
+    do: {:via, Registry, {__MODULE__, callback}}
 
   @spec config(module) :: SiteEncrypt.config()
   def config(callback) do
@@ -18,8 +18,15 @@ defmodule SiteEncrypt.Registry do
     config
   end
 
+  def store_config(callback) do
+    {new_config, _} =
+      Registry.update_value(__MODULE__, callback, fn _ -> normalized_config(callback) end)
+
+    new_config
+  end
+
   defp normalized_config(callback) do
-    config = Map.merge(defaults(), callback.config())
+    config = Map.merge(defaults(), callback.certification_config())
 
     if rem(config.renew_interval, 1000) != 0,
       do: raise("renew interval must be divisible by 1000 (i.e. expressed in seconds)")

@@ -3,10 +3,10 @@ defmodule SiteEncryptTest do
   alias __MODULE__.TestEndpoint
 
   test "certification" do
-    File.rm_rf(TestEndpoint.Certifier.config().base_folder)
-    File.rm_rf(TestEndpoint.Certifier.config().cert_folder)
+    File.rm_rf(TestEndpoint.certification_config().base_folder)
+    File.rm_rf(TestEndpoint.certification_config().cert_folder)
 
-    start_supervised!({SiteEncrypt.Phoenix, {TestEndpoint.Certifier, TestEndpoint}})
+    start_supervised!({SiteEncrypt.Phoenix, {TestEndpoint, TestEndpoint}})
 
     # self-signed certificate
     first_cert = get_cert()
@@ -52,8 +52,9 @@ defmodule SiteEncryptTest do
     @moduledoc false
 
     use Phoenix.Endpoint, otp_app: :site_encrypt
+    @behaviour SiteEncrypt
 
-    plug SiteEncrypt.AcmeChallenge, __MODULE__.Certifier
+    plug SiteEncrypt.AcmeChallenge, __MODULE__
 
     @impl Phoenix.Endpoint
     def init(_key, config) do
@@ -61,37 +62,33 @@ defmodule SiteEncryptTest do
        Keyword.merge(config,
          url: [scheme: "https", host: "localhost", port: 4001],
          http: [port: 4000],
-         https: [port: 4001] ++ __MODULE__.Certifier.https_keys(),
+         https: [port: 4001] ++ https_keys(),
          server: true
        )}
     end
 
-    defmodule Certifier do
-      @behaviour SiteEncrypt
+    defp https_keys(), do: SiteEncrypt.https_keys(certification_config())
 
-      def https_keys(), do: SiteEncrypt.https_keys(config())
-
-      @impl SiteEncrypt
-      def config() do
-        %{
-          ca_url: local_acme_server(),
-          domain: "localhost",
-          extra_domains: [],
-          email: "admin@foo.bar",
-          base_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("certbot"),
-          cert_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("cert"),
-          name: __MODULE__,
-          mode: :manual
-        }
-      end
-
-      @impl SiteEncrypt
-      def handle_new_cert do
-        :ok
-      end
-
-      defp local_acme_server,
-        do: {:local_acme_server, %{adapter: Plug.Adapters.Cowboy, port: 4003}}
+    @impl SiteEncrypt
+    def certification_config() do
+      %{
+        ca_url: local_acme_server(),
+        domain: "localhost",
+        extra_domains: [],
+        email: "admin@foo.bar",
+        base_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("certbot"),
+        cert_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("cert"),
+        name: __MODULE__.Certifier,
+        mode: :manual
+      }
     end
+
+    @impl SiteEncrypt
+    def handle_new_cert do
+      :ok
+    end
+
+    defp local_acme_server,
+      do: {:local_acme_server, %{adapter: Plug.Adapters.Cowboy, port: 4003}}
   end
 end

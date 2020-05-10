@@ -7,7 +7,7 @@ defmodule SiteEncrypt.Phoenix do
 
   @impl Supervisor
   def init({callback, endpoint}) do
-    config = Registry.config(callback)
+    config = Registry.store_config(callback)
 
     SiteEncrypt.initialize_certs(config)
 
