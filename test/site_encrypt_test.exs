@@ -3,8 +3,8 @@ defmodule SiteEncryptTest do
   alias __MODULE__.TestEndpoint
 
   test "certification" do
-    File.rm_rf(TestEndpoint.certification_config().base_folder)
-    File.rm_rf(TestEndpoint.certification_config().cert_folder)
+    File.rm_rf(Keyword.fetch!(TestEndpoint.certification(), :base_folder))
+    File.rm_rf(Keyword.fetch!(TestEndpoint.certification(), :cert_folder))
 
     start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
 
@@ -14,7 +14,7 @@ defmodule SiteEncryptTest do
     # obtains the first certificate irrespective of the time
     log =
       capture_log(fn ->
-        assert SiteEncrypt.Certifier.tick_at(TestEndpoint.Certifier, ~U[2020-01-01 01:02:03Z]) ==
+        assert SiteEncrypt.Certifier.tick_at(TestEndpoint, ~U[2020-01-01 01:02:03Z]) ==
                  :ok
       end)
 
@@ -26,7 +26,7 @@ defmodule SiteEncryptTest do
     # renews the certificate at midnight UTC
     log =
       capture_log(fn ->
-        assert SiteEncrypt.Certifier.tick_at(TestEndpoint.Certifier, ~U[2020-01-01 00:00:00Z]) ==
+        assert SiteEncrypt.Certifier.tick_at(TestEndpoint, ~U[2020-01-01 00:00:00Z]) ==
                  :ok
       end)
 
@@ -68,17 +68,16 @@ defmodule SiteEncryptTest do
     end
 
     @impl SiteEncrypt
-    def certification_config do
-      %{
+    def certification do
+      [
         ca_url: local_acme_server(),
         domain: "localhost",
         extra_domains: [],
         email: "admin@foo.bar",
         base_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("certbot"),
         cert_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("cert"),
-        name: __MODULE__.Certifier,
         mode: :manual
-      }
+      ]
     end
 
     @impl SiteEncrypt
@@ -86,7 +85,6 @@ defmodule SiteEncryptTest do
       :ok
     end
 
-    defp local_acme_server,
-      do: {:local_acme_server, port: 4003}
+    defp local_acme_server, do: {:local_acme_server, port: 4003}
   end
 end

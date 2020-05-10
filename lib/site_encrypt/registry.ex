@@ -9,41 +9,17 @@ defmodule SiteEncrypt.Registry do
     )
   end
 
-  def name(callback),
-    do: {:via, Registry, {__MODULE__, callback}}
-
-  @spec config(module) :: SiteEncrypt.config()
-  def config(callback) do
-    [{_pid, config}] = Registry.lookup(__MODULE__, callback)
+  @spec config(SiteEncrypt.id()) :: SiteEncrypt.config()
+  def config(id) do
+    [{_pid, config}] = Registry.lookup(__MODULE__, {id, :site})
     config
   end
 
-  def store_config(callback) do
-    {new_config, _} =
-      Registry.update_value(__MODULE__, callback, fn _ -> normalized_config(callback) end)
-
-    new_config
+  @spec register_main_site(SiteEncrypt.config()) :: :ok | {:error, {:already_registered, pid}}
+  def register_main_site(config) do
+    with {:ok, _pid} <- Registry.register(__MODULE__, {config.id, :site}, config),
+         do: :ok
   end
 
-  defp normalized_config(callback) do
-    config = Map.merge(defaults(), callback.certification_config())
-
-    if rem(config.renew_interval, 1000) != 0,
-      do: raise("renew interval must be divisible by 1000 (i.e. expressed in seconds)")
-
-    if config.renew_interval < 1000,
-      do: raise("renew interval must be larger than 1 second")
-
-    config
-  end
-
-  defp defaults do
-    %{
-      renew_interval: :timer.hours(24),
-      extra_domains: [],
-      log_level: :info,
-      name: nil,
-      mode: :auto
-    }
-  end
+  def name(id, role), do: {:via, Registry, {__MODULE__, {id, role}}}
 end

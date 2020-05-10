@@ -1,34 +1,67 @@
 defmodule SiteEncrypt do
   require Logger
 
-  @type config :: %{
-          required(:ca_url) => ca_url,
-          required(:domain) => String.t(),
-          optional(:extra_domains) => [String.t()],
-          required(:email) => String.t(),
-          required(:base_folder) => String.t(),
-          required(:cert_folder) => String.t(),
-          optional(:renew_interval) => pos_integer(),
-          optional(:log_level) => log_level,
-          optional(:name) => GenServer.name(),
-          optional(:mode) => :auto | :manual
-        }
+  config_type = [
+    id: quote(do: id),
+    ca_url: quote(do: ca_url),
+    domain: quote(do: String.t()),
+    extra_domains: quote(do: [String.t()]),
+    email: quote(do: String.t()),
+    base_folder: quote(do: String.t()),
+    cert_folder: quote(do: String.t()),
+    renew_interval: quote(do: pos_integer()),
+    log_level: quote(do: log_level),
+    mode: quote(do: :auto | :manual),
+    callback: quote(do: __MODULE__)
+  ]
 
+  @typedoc false
+  @type config :: %{unquote_splicing(config_type)}
+
+  @type certification :: unquote(Keyword.drop(config_type, ~w/callback/a))
+
+  @type id :: any
   @type ca_url :: String.t() | {:local_acme_server, [port: pos_integer]}
   @type log_level :: Logger.level()
 
-  @callback certification_config() :: config
+  @callback certification() :: certification()
   @callback handle_new_cert() :: any
 
-  @spec https_keys(module) :: [keyfile: Path.t(), certfile: Path.t(), cacertfile: Path.t()]
-  def https_keys(callback) do
-    config = SiteEncrypt.Registry.config(callback)
+  @spec https_keys(id) :: [keyfile: Path.t(), certfile: Path.t(), cacertfile: Path.t()]
+  def https_keys(id) do
+    config = SiteEncrypt.Registry.config(id)
 
     [
       keyfile: Path.join(config.cert_folder, "privkey.pem"),
       certfile: Path.join(config.cert_folder, "cert.pem"),
       cacertfile: Path.join(config.cert_folder, "chain.pem")
     ]
+  end
+
+  @doc false
+  @spec normalized_config(module, certification) :: config
+  def normalized_config(callback, defaults \\ []) do
+    config =
+      defaults()
+      |> Map.merge(Map.new(defaults))
+      |> Map.merge(Map.new(callback.certification()))
+
+    if rem(config.renew_interval, 1000) != 0,
+      do: raise("renew interval must be divisible by 1000 (i.e. expressed in seconds)")
+
+    if config.renew_interval < 1000,
+      do: raise("renew interval must be larger than 1 second")
+
+    Map.put(config, :callback, callback)
+  end
+
+  defp defaults do
+    %{
+      renew_interval: :timer.hours(24),
+      extra_domains: [],
+      log_level: :info,
+      mode: :auto
+    }
   end
 
   @doc false

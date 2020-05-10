@@ -1,28 +1,29 @@
 defmodule SiteEncrypt.Phoenix do
   use Supervisor
-  alias SiteEncrypt.Registry
 
-  def start_link({callback, _opts} = arg),
-    do: Supervisor.start_link(__MODULE__, arg, name: Registry.name(callback))
+  def start_link({callback, opts}) do
+    config = SiteEncrypt.normalized_config(callback, id: Keyword.get(opts, :endpoint, callback))
+    Supervisor.start_link(__MODULE__, {config, opts})
+  end
 
   def start_link(callback), do: start_link({callback, []})
 
   @impl Supervisor
-  def init({callback, opts}) do
-    endpoint = Keyword.get(opts, :endpoint, callback)
-    config = Registry.store_config(callback)
+  def init({config, opts}) do
+    with :ok <- SiteEncrypt.Registry.register_main_site(config) do
+      endpoint = Keyword.get(opts, :endpoint, config.callback)
+      SiteEncrypt.initialize_certs(config)
 
-    SiteEncrypt.initialize_certs(config)
-
-    Supervisor.init(
-      [
-        acme_server_spec(config, endpoint),
-        Supervisor.child_spec(endpoint, id: :endpoint),
-        {SiteEncrypt.Certifier, callback}
-      ]
-      |> Enum.reject(&is_nil/1),
-      strategy: :rest_for_one
-    )
+      Supervisor.init(
+        [
+          acme_server_spec(config, endpoint),
+          Supervisor.child_spec(endpoint, id: :endpoint),
+          {SiteEncrypt.Certifier, config}
+        ]
+        |> Enum.reject(&is_nil/1),
+        strategy: :rest_for_one
+      )
+    end
   end
 
   defp acme_server_spec(%{ca_url: url}, _endpoint) when is_binary(url), do: nil
