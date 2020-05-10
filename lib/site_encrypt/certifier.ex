@@ -3,7 +3,7 @@ defmodule SiteEncrypt.Certifier do
 
   @spec force_renew(module) :: :ok | {:error, String.t()}
   def force_renew(callback),
-    do: do_get_cert(callback, Registry.config(callback), force_renewal: true)
+    do: get_cert(callback, force_renewal: true)
 
   @spec tick_at(GenServer.name(), DateTime.t()) :: :ok | {:error, any}
   def tick_at(name, datetime) do
@@ -48,12 +48,9 @@ defmodule SiteEncrypt.Certifier do
 
   defp utc_now, do: :persistent_term.get(__MODULE__, DateTime.utc_now())
 
-  defp get_cert(callback) do
+  defp get_cert(callback, opts \\ []) do
     config = Registry.config(callback)
-    if config.run_client?, do: do_get_cert(callback, config)
-  end
 
-  defp do_get_cert(callback, config, opts \\ []) do
     case Certbot.ensure_cert(config, opts) do
       {:error, output} ->
         Logger.log(:error, "Error obtaining certificate for #{config.domain}:\n#{output}")

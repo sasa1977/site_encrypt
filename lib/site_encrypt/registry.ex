@@ -39,7 +39,6 @@ defmodule SiteEncrypt.Registry do
 
   defp defaults do
     %{
-      run_client?: true,
       renew_interval: :timer.hours(24),
       extra_domains: [],
       log_level: :info,

@@ -2,7 +2,6 @@ defmodule SiteEncrypt do
   require Logger
 
   @type config :: %{
-          optional(:run_client?) => boolean,
           required(:ca_url) => ca_url,
           required(:domain) => String.t(),
           optional(:extra_domains) => [String.t()],
