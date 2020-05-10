@@ -24,5 +24,5 @@ defmodule PhoenixDemoWeb.Certbot do
     :ok
   end
 
-  defp local_acme_server(), do: {:local_acme_server, %{adapter: Plug.Adapters.Cowboy, port: 4002}}
+  defp local_acme_server(), do: {:local_acme_server, port: 4002}
 end

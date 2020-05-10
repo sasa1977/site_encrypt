@@ -15,7 +15,7 @@ defmodule SiteEncrypt do
           optional(:mode) => :auto | :manual
         }
 
-  @type ca_url :: String.t() | {:local_acme_server, %{port: pos_integer, adapter: module}}
+  @type ca_url :: String.t() | {:local_acme_server, [port: pos_integer]}
   @type log_level :: Logger.level()
 
   @callback certification_config() :: config

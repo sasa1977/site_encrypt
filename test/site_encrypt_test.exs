@@ -89,6 +89,6 @@ defmodule SiteEncryptTest do
     end
 
     defp local_acme_server,
-      do: {:local_acme_server, %{adapter: Plug.Adapters.Cowboy, port: 4003}}
+      do: {:local_acme_server, port: 4003}
   end
 end

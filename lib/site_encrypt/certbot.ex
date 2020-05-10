@@ -90,7 +90,9 @@ defmodule SiteEncrypt.Certbot do
     )
   end
 
-  defp ca_url({:local_acme_server, %{port: port}}), do: "http://localhost:#{port}/directory"
+  defp ca_url({:local_acme_server, opts}),
+    do: "http://localhost:#{Keyword.fetch!(opts, :port)}/directory"
+
   defp ca_url(ca_url), do: ca_url
 
   defp domain_params(config), do: Enum.map([config.domain | config.extra_domains], &"-d #{&1}")
