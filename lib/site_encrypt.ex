@@ -13,11 +13,15 @@ defmodule SiteEncrypt do
     log_level: quote(do: log_level),
     mode: quote(do: :auto | :manual),
     callback: quote(do: __MODULE__),
-    assigns: quote(do: map)
+    assigns: quote(do: map),
+    backup: quote(do: String.t())
   ]
 
   @typedoc false
-  @type config :: %{unquote_splicing(config_type)}
+  @type config :: %{
+          unquote_splicing(Keyword.drop(config_type, ~w/backup/a)),
+          backup: String.t() | nil
+        }
 
   @type certification :: unquote(Keyword.drop(config_type, ~w/callback assigns/a))
 
@@ -62,7 +66,8 @@ defmodule SiteEncrypt do
       extra_domains: [],
       log_level: :info,
       mode: :auto,
-      assigns: %{}
+      assigns: %{},
+      backup: nil
     }
   end
 

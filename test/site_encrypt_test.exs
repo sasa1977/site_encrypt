@@ -25,6 +25,46 @@ defmodule SiteEncryptTest do
     assert log =~ "Obtained new certificate for localhost"
   end
 
+  test "backup and restore" do
+    start_supervised!({SiteEncrypt.Phoenix, TestEndpoint}, restart: :permanent)
+    config = SiteEncrypt.Registry.config(TestEndpoint)
+
+    # force renew and verify that backup is made
+    :ok = SiteEncrypt.Certifier.force_renew(TestEndpoint)
+    assert File.exists?(config.backup)
+
+    backed_up_cert = get_cert(TestEndpoint)
+
+    # stop the site and remove all cert folders
+    stop_supervised!(SiteEncrypt.Phoenix)
+
+    File.rm_rf!(config.base_folder)
+    File.rm_rf!(config.cert_folder)
+    :ssl.clear_pem_cache()
+
+    # restart the site
+    start_supervised!({SiteEncrypt.Phoenix, TestEndpoint}, restart: :permanent)
+
+    # make sure it's not using the backed up cert
+    refute get_cert(TestEndpoint) == backed_up_cert
+
+    # restore the cert
+    assert SiteEncrypt.Certifier.restore(TestEndpoint, config.backup) == :ok
+    assert get_cert(TestEndpoint) == backed_up_cert
+
+    # make sure that renewal is still working correctly
+    assert :ok = SiteEncrypt.Certifier.force_renew(TestEndpoint)
+    refute get_cert(TestEndpoint) == backed_up_cert
+
+    # double check that the certifier ticks after the restore
+    log =
+      capture_log(fn ->
+        assert SiteEncrypt.Certifier.tick(TestEndpoint, ~U[2020-01-01 00:00:00Z]) == :ok
+      end)
+
+    assert log =~ "The following certs are not due for renewal yet"
+  end
+
   defmodule TestEndpoint do
     @moduledoc false
 
@@ -53,7 +93,8 @@ defmodule SiteEncryptTest do
         email: "admin@foo.bar",
         base_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("certbot"),
         cert_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("cert"),
-        mode: :manual
+        mode: :manual,
+        backup: Path.join(System.tmp_dir!(), "site_encrypt_backup.tgz")
       ]
     end
 
