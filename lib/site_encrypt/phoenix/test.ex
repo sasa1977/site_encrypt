@@ -9,7 +9,7 @@ defmodule SiteEncrypt.Phoenix.Test do
     # stop the site, remove cert folders, and restart the site
     root_pid = Registry.whereis(id, :root)
     Supervisor.terminate_child(root_pid, :site)
-    Enum.each(~w/base_folder cert_folder/a, &File.rm_rf(Map.fetch!(config, &1)))
+    Enum.each(~w/base_folder cert_folder backup/a, &File.rm_rf(Map.fetch!(config, &1)))
     Supervisor.restart_child(root_pid, :site)
 
     # self-signed certificate

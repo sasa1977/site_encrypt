@@ -1,0 +1,55 @@
+name: "site_encrypt"
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      CACHE_VERSION: v1
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-elixir@v1
+        with:
+          otp-version: 22.2
+          elixir-version: 1.10.3
+
+      - name: Restore cached deps
+        uses: actions/cache@v1
+        with:
+          path: deps
+          key: deps-${{ env.CACHE_VERSION }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: |
+            deps-${{ env.CACHE_VERSION }}-${{ github.ref }}-
+            deps-${{ env.CACHE_VERSION }}-
+
+      - name: Restore cached build
+        uses: actions/cache@v1
+        with:
+          path: _build
+          key: build-${{ env.CACHE_VERSION }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          restore-keys: |
+            build-${{ env.CACHE_VERSION }}-${{ github.ref }}-
+            build-${{ env.CACHE_VERSION }}-
+
+      - run: |
+          sudo apt-get install software-properties-common
+          sudo add-apt-repository universe -y
+          sudo add-apt-repository ppa:certbot/certbot -y
+          sudo apt-get update
+          sudo apt-get install -y certbot
+
+      - run: mix deps.get
+
+      - name: Compile project
+        run: |
+          MIX_ENV=test mix compile --warnings-as-errors
+          MIX_ENV=dev mix compile --warnings-as-errors
+          MIX_ENV=prod mix compile --warnings-as-error
+
+      - run: mix format --check-formatted
+      - run: mix test
+      - run: mix dialyzer

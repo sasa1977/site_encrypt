@@ -1,6 +1,6 @@
 # SiteEncrypt
 
-[![Build Status](https://travis-ci.org/sasa1977/site_encrypt.svg?branch=master)](https://travis-ci.org/sasa1977/site_encrypt)
+![Build Status](https://github.com/sasa1977/site_encrypt/workflows/site_encrypt/badge.svg)
 
 This project aims to provide integrated certification via [Let's encrypt](https://letsencrypt.org/) for sites implemented in Elixir.
 
