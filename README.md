@@ -70,7 +70,7 @@ defmodule PhoenixDemo.Endpoint do
 
   @impl SiteEncrypt
   def handle_new_cert do
-    # Invoked after certificate has been obtained. Consider backing up the content of your base_folder here.
+    # Invoked after certificate has been obtained.
     :ok
   end
 
@@ -175,27 +175,21 @@ For staging, you can use https://acme-staging-v02.api.letsencrypt.org/directory.
 
 In both cases (staging and production certification), the site must be publicly reachable at `http://<DOMAIN NAME>`.
 
-Once you have your production cert, make sure to backup the entire contents of the certbot folder. If you're moving to the new machine, you should restore the backup to the certbot folder (see below).
-
 It's up to you to decide how to vary the settings between local development and production.
 
-## Restoring a backup
+## Backup and restore
 
-Restore previous cert and certbot directories. In the certbot directory, there should be symlinks in the subdirectory `certbot/config/live/MY_DOMAIN/`. There should be 4 symlinks to 4 files (cert.pem, fullchain.pem, privkey.pem and chain.pem). If the symlinks are preserved you have nothing more to do. If they are not.
+SiteEncrypt supports automatic backup. To enable it, include `backup: path_to_backup_tgz` in the map returned by `config/0`. Every time a new certificate is obtained, the entire content of the `base_folder` will be backed up to this file as a compressed tarball. This happens before `handle_new_cert` is invoked.
 
-- go check into `certbot/config/archive/MY_DOMAIN/`
-- you should see some files, at least cert1.pem fullchain1.pem, privkey1.pem and chain1.pem. They correspond to the initially issued certificate. If your certificate has been renewed, you will find also cert2.pem, fulllchain2.pem... You'll have to make the symlink between the latest of these files and the live directory. So go to `certbot/config/live/`
-- type the following (if your certificate has been renewed, replace the 1 with the latest number you have)
+Note that this file is not encrypted, so make sure to restrict the access to it, or otherwise postprocess it (e.g. encrypt it) in the `handle_new_cert` callback.
 
-```Shell
-rm cert.pem chain.pem fullchain.pem privkey.pem
-ln -s ../../archive/MY_DOMAIN/cert1.pem cert.pem
-ln -s ../../archive/MY_DOMAIN/chain1.pem chain.pem
-ln -s ../../archive/MY_DOMAIN/fullchain1.pem fullchain.pem
-ln -s ../../archive/MY_DOMAIN/privkey1.pem privkey.pem
-```
+To restore the backup, e.g. on another machine, make sure that `base_folder` does not exist. Then start the system, and after the site is successfully started invoke `SiteEncrypt.Certifier.restore(YourEndpointModule, path_to_backup_tgz)`.
 
-and you're good to go!
+Note that a successful restore is treated as a certificate renewal, which means that the new certificate will be backed up (if configured), and `handle_new_cert` will be invoked.
+
+## Force renewal
+
+To force renew a certificate, you can invoke `SiteEncrypt.Certifier.force_renew(YourEndpointModule)`. This will temporarily pause the periodic renewal (waiting for it to finish if it happens to be running), renew the certificate, and resume the periodic renewal. The new certificate will be backed up, and `handle_new_cert` will be invoked.
 
 ## License
 
