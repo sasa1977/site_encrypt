@@ -1,14 +1,28 @@
 defmodule SiteEncryptTest do
   use ExUnit.Case, async: true
   alias __MODULE__.TestEndpoint
+  import SiteEncrypt.Phoenix.Test
 
   test "certification" do
     start_supervised!({SiteEncrypt.Phoenix, TestEndpoint}, restart: :permanent)
 
-    SiteEncrypt.Phoenix.Test.verify_certification(TestEndpoint, [
+    verify_certification(TestEndpoint, [
       ~U[2020-01-01 00:00:00Z],
       ~U[2020-02-01 00:00:00Z]
     ])
+  end
+
+  test "force_renew" do
+    start_supervised!({SiteEncrypt.Phoenix, TestEndpoint}, restart: :permanent)
+    first_cert = get_cert(TestEndpoint)
+
+    log =
+      capture_log(fn ->
+        assert SiteEncrypt.Certifier.force_renew(TestEndpoint) == :ok
+        assert get_cert(TestEndpoint) != first_cert
+      end)
+
+    assert log =~ "Obtained new certificate for localhost"
   end
 
   defmodule TestEndpoint do

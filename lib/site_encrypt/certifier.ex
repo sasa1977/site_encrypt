@@ -2,20 +2,14 @@ defmodule SiteEncrypt.Certifier do
   alias SiteEncrypt.{Certbot, Logger, Registry}
 
   @spec force_renew(SiteEncrypt.id()) :: :ok | {:error, String.t()}
-  def force_renew(id),
-    do: get_cert(Registry.config(id), force_renewal: true)
+  def force_renew(id) do
+    Supervisor.terminate_child(Registry.whereis(id, :site), __MODULE__)
 
-  @spec tick_at(SiteEncrypt.id(), DateTime.t()) :: :ok | {:error, any}
-  def tick_at(id, datetime) do
-    :persistent_term.put({__MODULE__, id}, datetime)
-
-    case Periodic.Test.sync_tick(Registry.name(id, :certifier), :infinity) do
-      {:ok, :normal} -> :ok
-      {:ok, abnormal} -> {:error, abnormal}
-      error -> error
+    try do
+      get_cert(Registry.config(id), force_renewal: true)
+    after
+      Supervisor.restart_child(Registry.whereis(id, :site), __MODULE__)
     end
-  after
-    :persistent_term.erase({{__MODULE__, id}, datetime})
   end
 
   @spec child_spec(SiteEncrypt.config()) :: Supervisor.child_spec()
@@ -32,6 +26,7 @@ defmodule SiteEncrypt.Certifier do
       end,
       on_overlap: :ignore,
       timeout: :timer.minutes(1),
+      shutdown: :timer.minutes(1),
       mode: config.mode,
       name: Registry.name(config.id, :certifier)
     )
@@ -62,4 +57,17 @@ defmodule SiteEncrypt.Certifier do
   end
 
   defp log(config, output), do: Logger.log(config.log_level, output)
+
+  @doc false
+  def tick(id, datetime) do
+    :persistent_term.put({__MODULE__, id}, datetime)
+
+    case Periodic.Test.sync_tick(Registry.name(id, :certifier), :infinity) do
+      {:ok, :normal} -> :ok
+      {:ok, abnormal} -> {:error, abnormal}
+      error -> error
+    end
+  after
+    :persistent_term.erase({{__MODULE__, id}, datetime})
+  end
 end

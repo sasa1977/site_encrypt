@@ -21,6 +21,7 @@ defmodule SiteEncrypt.Registry do
          do: :ok
   end
 
-  @doc false
   def name(id, role), do: {:via, Registry, {__MODULE__, {id, role}}}
+
+  def whereis(id, role), do: GenServer.whereis(name(id, role))
 end
