@@ -1,5 +1,4 @@
 defmodule SiteEncrypt.Certifier do
-  require Logger
   alias SiteEncrypt.{Certbot, Logger, Registry}
 
   @spec force_renew(SiteEncrypt.id()) :: :ok | {:error, String.t()}
@@ -9,21 +8,22 @@ defmodule SiteEncrypt.Certifier do
     end)
   end
 
-  @spec restore(SiteEncrypt.id(), Path.t()) :: :ok
-  def restore(id, source) do
-    with_periodic_certification_paused(id, fn ->
-      config = Registry.config(id)
-
-      if File.exists?(config.base_folder),
-        do: raise("#{config.base_folder} already exists, aborting restore")
-
+  @spec restore(SiteEncrypt.config()) :: :ok
+  def restore(config) do
+    if not is_nil(config.backup) and File.exists?(config.backup) and
+         not File.exists?(config.base_folder) do
+      Logger.log(:info, "restoring certificates for #{config.domain}")
       File.mkdir_p!(config.base_folder)
 
       :ok =
-        :erl_tar.extract(to_charlist(source), [:compressed, cwd: to_char_list(config.base_folder)])
+        :erl_tar.extract(
+          to_charlist(config.backup),
+          [:compressed, cwd: to_char_list(config.base_folder)]
+        )
 
       post_cert_renew(config)
-    end)
+      Logger.log(:info, "certificates for #{config.domain} restored")
+    end
   end
 
   defp with_periodic_certification_paused(id, fun) do
@@ -106,7 +106,8 @@ defmodule SiteEncrypt.Certifier do
     :ok = :erl_tar.close(tar)
   catch
     type, error ->
-      Elixir.Logger.error(
+      Logger.log(
+        :error,
         "Error backing up certificate: #{Exception.format(type, error, __STACKTRACE__)}"
       )
   end

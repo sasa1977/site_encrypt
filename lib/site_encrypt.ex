@@ -74,6 +74,7 @@ defmodule SiteEncrypt do
   @doc false
   def initialize_certs(config) do
     File.mkdir_p!(config.cert_folder)
+    SiteEncrypt.Certifier.restore(config)
 
     case SiteEncrypt.Certbot.https_keys(config) do
       {:ok, keys} -> copy_keys_to_cert_folder(config, keys)

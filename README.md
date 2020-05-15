@@ -82,7 +82,7 @@ Include `plug SiteEncrypt.AcmeChallenge, __MODULE__` in your endpoint. If you ha
 
 Configure https:
 
-```
+```elixir
 defmodule PhoenixDemo.Endpoint do
   # ...
 
@@ -179,11 +179,14 @@ It's up to you to decide how to vary the settings between local development and 
 
 ## Backup and restore
 
-SiteEncrypt supports automatic backup. To enable it, include `backup: path_to_backup_tgz` in the map returned by `config/0`. Every time a new certificate is obtained, the entire content of the `base_folder` will be backed up to this file as a compressed tarball. This happens before `handle_new_cert` is invoked.
+SiteEncrypt supports automatic backup. To enable it, include `backup: path_to_backup_tgz` in the options returned by `config/0`. Every time a new certificate is obtained, the entire content of the `base_folder` will be backed up to this file as a compressed tarball. This happens before `handle_new_cert` is invoked.
 
 Note that this file is not encrypted, so make sure to restrict the access to it, or otherwise postprocess it (e.g. encrypt it) in the `handle_new_cert` callback.
 
-To restore the backup, e.g. on another machine, make sure that `base_folder` does not exist. Then start the system, and after the site is successfully started invoke `SiteEncrypt.Certifier.restore(YourEndpointModule, path_to_backup_tgz)`.
+The backup is automatically restored when the endpoint is started if the following conditions are met:
+
+1. The backup file exists at the location configured via the `:backup` option
+2. The `base_folder` doesn't exist
 
 Note that a successful restore is treated as a certificate renewal, which means that the new certificate will be backed up (if configured), and `handle_new_cert` will be invoked.
 

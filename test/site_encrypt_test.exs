@@ -43,13 +43,14 @@ defmodule SiteEncryptTest do
     :ssl.clear_pem_cache()
 
     # restart the site
-    start_supervised!({SiteEncrypt.Phoenix, TestEndpoint}, restart: :permanent)
+    log =
+      capture_log(fn ->
+        start_supervised!({SiteEncrypt.Phoenix, TestEndpoint}, restart: :permanent)
+      end)
 
-    # make sure it's not using the backed up cert
-    refute get_cert(TestEndpoint) == backed_up_cert
+    assert log =~ "certificates for localhost restored"
 
-    # restore the cert
-    assert SiteEncrypt.Certifier.restore(TestEndpoint, config.backup) == :ok
+    # make sure the cert is restored
     assert get_cert(TestEndpoint) == backed_up_cert
 
     # make sure that renewal is still working correctly
