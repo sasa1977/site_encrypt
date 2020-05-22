@@ -164,7 +164,7 @@ defmodule AcmeClient.API do
   defp id_map(:kid, session), do: %{"kid" => session.kid}
 
   defp http_request(session, verb, url, opts \\ []) do
-    Logger.info("#{String.upcase(to_string(verb))} #{url}")
+    Logger.debug("#{String.upcase(to_string(verb))} #{url}")
 
     case Http.request(session.http_pool, verb, url, headers(opts), Keyword.get(opts, :body)) do
       {:ok, response} ->
