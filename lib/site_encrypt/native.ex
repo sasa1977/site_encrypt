@@ -76,7 +76,7 @@ defmodule SiteEncrypt.Native do
     :new_cert
   end
 
-  def account_key(config) do
+  defp account_key(config) do
     config
     |> load_file!("account_key.json")
     |> Jason.decode!()
