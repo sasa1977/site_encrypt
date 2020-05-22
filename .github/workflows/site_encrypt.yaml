@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      CACHE_VERSION: v1
+      CACHE_VERSION: v2
 
     steps:
       - uses: actions/checkout@v2
