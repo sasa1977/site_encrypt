@@ -18,7 +18,7 @@ defmodule AcmeServer.Crypto do
   def self_signed_chain(domains) do
     {ca_key, ca_cert} = ca_key_and_cert()
 
-    server_key = PrivateKey.new_rsa(4096)
+    server_key = PrivateKey.new_rsa(1024)
 
     server_cert =
       server_key

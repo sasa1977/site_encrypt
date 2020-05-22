@@ -1,16 +1,23 @@
 defmodule SiteEncrypt.Certifier do
-  alias SiteEncrypt.{Certbot, Logger, Registry}
+  alias SiteEncrypt.{Logger, Registry}
 
-  @spec force_renew(SiteEncrypt.id()) :: :ok | {:error, String.t()}
-  def force_renew(id) do
-    with_periodic_certification_paused(id, fn ->
-      get_cert(Registry.config(id), force_renewal: true)
-    end)
+  def start_link(config) do
+    Supervisor.start_link(
+      [
+        job_parent_spec(config),
+        periodic_scheduler_spec(config)
+      ],
+      strategy: :one_for_one
+    )
   end
+
+  @spec force_renew(SiteEncrypt.id()) :: :already_started | :finished
+  def force_renew(id), do: run_job(Registry.config(id), force_renewal: true)
 
   @spec restore(SiteEncrypt.config()) :: :ok
   def restore(config) do
-    if not is_nil(config.backup) and File.exists?(config.backup) and
+    if not is_nil(config.backup) and
+         File.exists?(config.backup) and
          not File.exists?(config.base_folder) do
       Logger.log(:info, "restoring certificates for #{config.domain}")
       File.mkdir_p!(config.base_folder)
@@ -21,107 +28,73 @@ defmodule SiteEncrypt.Certifier do
           [:compressed, cwd: to_char_list(config.base_folder)]
         )
 
-      post_cert_renew(config)
+      SiteEncrypt.Certifier.Job.post_certify(config)
       Logger.log(:info, "certificates for #{config.domain} restored")
     end
   end
 
-  defp with_periodic_certification_paused(id, fun) do
-    Supervisor.terminate_child(Registry.whereis(id, :site), __MODULE__)
-
-    try do
-      fun.()
-    after
-      Supervisor.restart_child(Registry.whereis(id, :site), __MODULE__)
-    end
+  defp job_parent_spec(config) do
+    {
+      DynamicSupervisor,
+      strategy: :one_for_one, name: Registry.name(config.id, __MODULE__.JobParent)
+    }
   end
 
-  @spec child_spec(SiteEncrypt.config()) :: Supervisor.child_spec()
-  def child_spec(config) do
-    renew_interval_sec = div(config.renew_interval, 1000)
-
+  defp periodic_scheduler_spec(config) do
     Periodic.child_spec(
-      id: __MODULE__,
-      run: fn -> get_cert(config) end,
+      id: __MODULE__.Scheduler,
+      run: fn -> run_job(config, []) end,
       every: :timer.seconds(1),
-      when: fn ->
-        utc_now(config.id) |> DateTime.to_unix() |> rem(renew_interval_sec) == 0 or
-          not Certbot.keys_available?(config)
-      end,
+      when: fn -> time_to_renew?(config) or config.certifier.pems(config) == :error end,
       on_overlap: :ignore,
-      timeout: :timer.minutes(1),
-      job_shutdown: :timer.minutes(1),
       mode: config.mode,
-      name: Registry.name(config.id, :certifier)
+      name: Registry.name(config.id, __MODULE__.Scheduler)
     )
+  end
+
+  defp time_to_renew?(config) do
+    renew_interval_sec = div(config.renew_interval, 1000)
+    utc_now(config.id) |> DateTime.to_unix() |> rem(renew_interval_sec) == 0
   end
 
   defp utc_now(id), do: :persistent_term.get({__MODULE__, id}, DateTime.utc_now())
 
-  defp get_cert(config, opts \\ []) do
-    case Certbot.ensure_cert(config, opts) do
-      {:error, output} ->
-        Logger.log(:error, "Error obtaining certificate for #{config.domain}:\n#{output}")
-        {:error, output}
+  defp run_job(config, opts) do
+    case DynamicSupervisor.start_child(
+           Registry.name(config.id, __MODULE__.JobParent),
+           Supervisor.child_spec({SiteEncrypt.Certifier.Job, {config, opts}}, restart: :temporary)
+         ) do
+      {:ok, pid} ->
+        mref = Process.monitor(pid)
 
-      {:new_cert, output} ->
-        log(config, output)
-        log(config, "Obtained new certificate for #{config.domain}")
-        post_cert_renew(config)
+        receive do
+          {:DOWN, ^mref, :process, ^pid, _reason} -> :finished
+        end
 
-      {:no_change, output} ->
-        log(config, output)
-        :ok
+      {:error, {:already_started, _pid}} ->
+        :already_started
     end
-  end
-
-  defp log(config, output), do: Logger.log(config.log_level, output)
-
-  defp post_cert_renew(config) do
-    SiteEncrypt.initialize_certs(config)
-    :ssl.clear_pem_cache()
-
-    unless is_nil(config.backup), do: backup(config)
-    config.callback.handle_new_cert()
-
-    :ok
-  end
-
-  defp backup(config) do
-    {:ok, tar} = :erl_tar.open(to_charlist(config.backup), [:write, :compressed])
-
-    config.base_folder
-    |> Path.join("*")
-    |> Path.wildcard()
-    |> Enum.each(fn path ->
-      :ok =
-        :erl_tar.add(
-          tar,
-          to_charlist(path),
-          to_charlist(Path.relative_to(path, config.base_folder)),
-          []
-        )
-    end)
-
-    :ok = :erl_tar.close(tar)
-  catch
-    type, error ->
-      Logger.log(
-        :error,
-        "Error backing up certificate: #{Exception.format(type, error, __STACKTRACE__)}"
-      )
   end
 
   @doc false
   def tick(id, datetime) do
     :persistent_term.put({__MODULE__, id}, datetime)
 
-    case Periodic.Test.sync_tick(Registry.name(id, :certifier), :infinity) do
+    case Periodic.Test.sync_tick(Registry.name(id, __MODULE__.Scheduler), :infinity) do
       {:ok, :normal} -> :ok
       {:ok, abnormal} -> {:error, abnormal}
       error -> error
     end
   after
     :persistent_term.erase({{__MODULE__, id}, datetime})
+  end
+
+  @spec child_spec(SiteEncrypt.config()) :: Supervisor.child_spec()
+  def child_spec(config) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [config]},
+      type: :supervisor
+    }
   end
 end

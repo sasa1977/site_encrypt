@@ -14,7 +14,8 @@ defmodule SiteEncrypt do
     mode: quote(do: :auto | :manual),
     callback: quote(do: __MODULE__),
     assigns: quote(do: map),
-    backup: quote(do: String.t())
+    backup: quote(do: String.t()),
+    certifier: quote(do: SiteEncrypt.Native | SiteEncrypt.Certbot)
   ]
 
   @typedoc false
@@ -67,7 +68,8 @@ defmodule SiteEncrypt do
       log_level: :info,
       mode: :auto,
       assigns: %{},
-      backup: nil
+      backup: nil,
+      certifier: SiteEncrypt.Certbot
     }
   end
 
@@ -76,19 +78,19 @@ defmodule SiteEncrypt do
     File.mkdir_p!(config.cert_folder)
     SiteEncrypt.Certifier.restore(config)
 
-    case SiteEncrypt.Certbot.https_keys(config) do
-      {:ok, keys} -> copy_keys_to_cert_folder(config, keys)
+    case config.certifier.pems(config) do
+      {:ok, keys} -> store_pems(config, keys)
       :error -> unless certificates_exist?(config), do: generate_self_signed_certificate!(config)
     end
   end
 
-  defp copy_keys_to_cert_folder(config, keys) do
-    keys
-    |> Keyword.values()
-    |> Stream.map(&Path.basename/1)
-    |> Stream.map(&Path.join(config.cert_folder, &1))
-    |> Stream.zip(keys)
-    |> Enum.each(fn {dest, {_role, src}} -> File.cp!(src, dest) end)
+  defp store_pems(config, keys) do
+    Enum.each(
+      keys,
+      fn {name, content} ->
+        File.write!(Path.join(config.cert_folder, "#{name}.pem"), content)
+      end
+    )
   end
 
   defp certificates_exist?(config) do

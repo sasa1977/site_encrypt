@@ -29,7 +29,9 @@ defmodule SiteEncrypt.MixProject do
       {:jose, "~> 1.10"},
       {:x509, "~> 0.3"},
       {:stream_data, "~> 0.1", only: [:dev, :test]},
-      {:dialyxir, "~> 1.0", runtime: false}
+      {:dialyxir, "~> 1.0", runtime: false},
+      {:mint, "~> 1.1"},
+      {:castore, "~> 0.1"}
     ]
   end
 end

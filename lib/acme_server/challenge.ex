@@ -25,7 +25,6 @@ defmodule AcmeServer.Challenge do
   # plus 11 delays of 5 seconds).
   @max_retries 12
   @retry_delay :timer.seconds(5)
-  @http_request_timeout :timer.seconds(5)
 
   use Parent.GenServer, restart: :temporary
 
@@ -42,7 +41,8 @@ defmodule AcmeServer.Challenge do
 
   @impl GenServer
   def init({config, challenge_data}) do
-    state = Map.merge(challenge_data, %{parent: self(), attempts: 1, config: config})
+    {:ok, http} = Parent.GenServer.start_child(AcmeClient.Http)
+    state = Map.merge(challenge_data, %{parent: self(), attempts: 1, config: config, http: http})
     start_challenge(state)
     {:ok, state}
   end
@@ -79,10 +79,15 @@ defmodule AcmeServer.Challenge do
   end
 
   defp challenge(state) do
-    if state.order.domains
-       |> challenge_domains(state.order.token, state.dns, state.key_thumbprint)
+    if challenge_domains(
+         state.http,
+         state.order.domains,
+         state.order.token,
+         state.dns,
+         state.key_thumbprint
+       )
        |> Enum.all?(&(&1 == :ok)) do
-      order = %{state.order | status: :valid}
+      order = %{state.order | status: :ready}
       AcmeServer.Account.update_order(state.config, state.account_id, order)
       send(state.parent, :challenge_succeeded)
     else
@@ -90,9 +95,9 @@ defmodule AcmeServer.Challenge do
     end
   end
 
-  defp challenge_domains(domains, token, dns, key_thumbprint) do
+  defp challenge_domains(http, domains, token, dns, key_thumbprint) do
     domains
-    |> Task.async_stream(&challenge_domain(http_server(&1, dns), token, key_thumbprint))
+    |> Task.async_stream(&challenge_domain(http, http_server(&1, dns), token, key_thumbprint))
     |> Enum.map(fn
       {:ok, result} -> result
       _ -> :error
@@ -106,8 +111,8 @@ defmodule AcmeServer.Challenge do
     end
   end
 
-  defp challenge_domain(url, token, key_thumbprint) do
-    with {:ok, {{_, 200, _}, _headers, response}} <- http_request(url, token),
+  defp challenge_domain(http, url, token, key_thumbprint) do
+    with {:ok, %{status: 200, body: response}} <- http_request(http, url, token),
          ^response <- "#{token}.#{key_thumbprint}" do
       :ok
     else
@@ -115,16 +120,9 @@ defmodule AcmeServer.Challenge do
     end
   end
 
-  defp http_request(server, token) do
-    # Using httpc, because it doesn't require external dependency. Httpc is not
-    # suitable for production, but AcmeServer is not meant to be used in
-    # production anyway.
-    :httpc.request(
-      :get,
-      {'http://#{server}/.well-known/acme-challenge/#{token}', []},
-      [timeout: @http_request_timeout],
-      body_format: :binary
-    )
+  defp http_request(http, server, token) do
+    url = "http://#{server}/.well-known/acme-challenge/#{token}"
+    AcmeClient.Http.request(http, :get, url, [], "")
   end
 
   defp via(config, challenge_data),

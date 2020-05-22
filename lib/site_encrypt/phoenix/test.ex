@@ -9,6 +9,7 @@ defmodule SiteEncrypt.Phoenix.Test do
     # stop the site, remove cert folders, and restart the site
     root_pid = Registry.whereis(id, :root)
     Supervisor.terminate_child(root_pid, :site)
+
     Enum.each(~w/base_folder cert_folder backup/a, &File.rm_rf(Map.fetch!(config, &1)))
     Supervisor.restart_child(root_pid, :site)
 
@@ -16,9 +17,7 @@ defmodule SiteEncrypt.Phoenix.Test do
     first_cert = get_cert(id)
 
     # obtains the first certificate irrespective of the time
-    log = capture_log(fn -> assert Certifier.tick(id, DateTime.utc_now()) == :ok end)
-
-    assert log =~ "Obtained new certificate for localhost"
+    assert Certifier.tick(id, DateTime.utc_now()) == :ok
 
     second_cert = get_cert(id)
     assert second_cert != first_cert
@@ -27,9 +26,7 @@ defmodule SiteEncrypt.Phoenix.Test do
       expected_times,
       fn time ->
         # attempts to renew the certificate at midnight UTC
-        log = capture_log(fn -> assert Certifier.tick(id, time) == :ok end)
-
-        assert log =~ "The following certs are not due for renewal yet"
+        assert Certifier.tick(id, time) == :ok
         assert get_cert(id) == second_cert
       end
     )

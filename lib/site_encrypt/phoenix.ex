@@ -28,19 +28,19 @@ defmodule SiteEncrypt.Phoenix do
 
   @impl Supervisor
   def init(config) do
-    with :ok <- SiteEncrypt.Registry.register_main_site(config) do
-      SiteEncrypt.initialize_certs(config)
+    :ok = SiteEncrypt.Registry.register_main_site(config)
 
-      Supervisor.init(
-        [
-          acme_server_spec(config),
-          Supervisor.child_spec(config.assigns.endpoint, id: :endpoint),
-          {SiteEncrypt.Certifier, config}
-        ]
-        |> Enum.reject(&is_nil/1),
-        strategy: :rest_for_one
-      )
-    end
+    SiteEncrypt.initialize_certs(config)
+
+    Supervisor.init(
+      [
+        acme_server_spec(config),
+        Supervisor.child_spec(config.assigns.endpoint, id: :endpoint),
+        {SiteEncrypt.Certifier, config}
+      ]
+      |> Enum.reject(&is_nil/1),
+      strategy: :rest_for_one
+    )
   end
 
   defp acme_server_spec(%{ca_url: url}) when is_binary(url), do: nil
@@ -55,8 +55,12 @@ defmodule SiteEncrypt.Phoenix do
     )
   end
 
-  defp acme_server_adapter_spec(port),
-    do: {Plug.Cowboy, scheme: :http, options: [port: port, transport_options: [num_acceptors: 1]]}
+  defp acme_server_adapter_spec(port) do
+    {
+      Plug.Cowboy,
+      options: [port: port]
+    }
+  end
 
   defp dns(config) do
     [config.domain | config.extra_domains]

@@ -3,7 +3,7 @@ defmodule PhoenixDemo.Endpoint do
   @behaviour SiteEncrypt
 
   plug SiteEncrypt.AcmeChallenge, __MODULE__
-  plug Plug.SSL, exclude: []
+  plug Plug.SSL, exclude: [], host: "localhost:4001"
   plug :hello
 
   defp hello(conn, _opts),
@@ -14,7 +14,7 @@ defmodule PhoenixDemo.Endpoint do
     {:ok,
      Keyword.merge(config,
        url: [scheme: "https", host: "localhost", port: 4001],
-       http: [port: 4000],
+       http: [port: 5002],
        https: [port: 4001] ++ SiteEncrypt.https_keys(__MODULE__),
        server: true
      )}
@@ -25,7 +25,8 @@ defmodule PhoenixDemo.Endpoint do
     common_settings = [
       base_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("certbot"),
       cert_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("cert"),
-      mode: unquote(if Mix.env() == :test, do: :manual, else: :auto)
+      mode: unquote(if Mix.env() == :test, do: :manual, else: :auto),
+      certifier: SiteEncrypt.Native
     ]
 
     target_machine_settings =

@@ -1,50 +1,55 @@
 defmodule SiteEncrypt.Certbot do
-  @type https_keys :: [keyfile: String.t(), certfile: String.t(), cacertfile: String.t()]
-  @type ensure_cert :: {:new_cert, String.t()} | {:no_change, String.t()} | {:error, String.t()}
+  @behaviour SiteEncrypt.Certifier.Job
+  alias SiteEncrypt.Logger
 
-  @spec keys_available?(SiteEncrypt.config()) :: boolean
-  def keys_available?(config),
-    do: Enum.all?([keyfile(config), certfile(config), cacertfile(config)], &File.exists?/1)
-
-  @spec https_keys(SiteEncrypt.config()) :: {:ok, https_keys} | :error
-  def https_keys(config) do
-    if keys_available?(config) do
-      {:ok,
-       [
-         keyfile: keyfile(config),
-         certfile: certfile(config),
-         cacertfile: cacertfile(config)
-       ]}
-    else
-      :error
+  @impl SiteEncrypt.Certifier.Job
+  def pems(config) do
+    [
+      privkey: keyfile(config),
+      cert: certfile(config),
+      chain: cacertfile(config)
+    ]
+    |> Stream.map(fn {type, path} ->
+      case File.read(path) do
+        {:ok, content} -> {type, content}
+        _error -> nil
+      end
+    end)
+    |> Enum.split_with(&is_nil/1)
+    |> case do
+      {[], pems} -> {:ok, pems}
+      {[_ | _], _} -> :error
     end
   end
 
-  @spec ensure_cert(SiteEncrypt.config(), force_renewal: boolean) :: ensure_cert()
-  def ensure_cert(config, opts \\ []) do
+  @impl SiteEncrypt.Certifier.Job
+  def certify(config, _http_pool, opts) do
     ensure_folders(config)
     original_keys_sha = keys_sha(config)
-    result = if keys_available?(config), do: renew(config, opts), else: certonly(config)
+
+    result =
+      if match?({:ok, _}, pems(config)), do: renew(config, opts), else: certonly(config, opts)
 
     case result do
       {output, 0} ->
-        if keys_sha(config) != original_keys_sha,
-          do: {:new_cert, output},
-          else: {:no_change, output}
+        Logger.log(config.log_level, output)
+        if keys_sha(config) != original_keys_sha, do: :new_cert, else: :no_change
 
       {output, _error} ->
-        {:error, output}
+        Logger.log(:error, output)
+        :error
     end
   end
 
-  @spec challenge_file(String.t(), String.t()) :: String.t()
-  def challenge_file(base_folder, challenge) do
+  @impl SiteEncrypt.Certifier.Job
+  def full_challenge(config, challenge) do
     Path.join([
-      webroot_folder(%{base_folder: base_folder}),
+      webroot_folder(%{base_folder: config.base_folder}),
       ".well-known",
       "acme-challenge",
       challenge
     ])
+    |> File.read!()
   end
 
   defp ensure_folders(config) do
@@ -54,9 +59,10 @@ defmodule SiteEncrypt.Certbot do
     )
   end
 
-  defp certonly(config) do
+  defp certonly(config, opts) do
     certbot_cmd(
       config,
+      opts,
       ~w(certonly -m #{config.email} --webroot --webroot-path #{webroot_folder(config)} --agree-tos) ++
         domain_params(config)
     )
@@ -70,16 +76,16 @@ defmodule SiteEncrypt.Certbot do
         &add_arg/2
       )
 
-    certbot_cmd(config, ["renew" | args])
+    certbot_cmd(config, opts, ["renew" | args])
   end
 
-  defp add_arg({:force_renewal, false}, args), do: args
   defp add_arg({:force_renewal, true}, args), do: ["--force-renewal" | args]
+  defp add_arg(_, args), do: args
 
-  defp certbot_cmd(config, args),
-    do: System.cmd("certbot", args ++ common_args(config), stderr_to_stdout: true)
+  defp certbot_cmd(config, opts, args),
+    do: System.cmd("certbot", args ++ common_args(config, opts), stderr_to_stdout: true)
 
-  defp common_args(config) do
+  defp common_args(config, opts) do
     ~w(
       --server #{ca_url(config.ca_url)}
       --work-dir #{work_folder(config)}
@@ -87,11 +93,12 @@ defmodule SiteEncrypt.Certbot do
       --logs-dir #{log_folder(config)}
       --no-self-upgrade
       --non-interactive
+      #{unless Keyword.get(opts, :verify_server_cert, true), do: "--no-verify-ssl"}
     )
   end
 
   defp ca_url({:local_acme_server, opts}),
-    do: "http://localhost:#{Keyword.fetch!(opts, :port)}/directory"
+    do: "https://localhost:#{Keyword.fetch!(opts, :port)}/directory"
 
   defp ca_url(ca_url), do: ca_url
 
@@ -108,14 +115,14 @@ defmodule SiteEncrypt.Certbot do
   defp cacertfile(config), do: Path.join(keys_folder(config), "chain.pem")
 
   defp keys_sha(config) do
-    case https_keys(config) do
+    case pems(config) do
       :error ->
         nil
 
       {:ok, keys} ->
         :crypto.hash(
           :md5,
-          keys |> Keyword.values() |> Stream.map(&File.read!/1) |> Enum.join()
+          keys |> Keyword.values() |> Enum.join()
         )
     end
   end
