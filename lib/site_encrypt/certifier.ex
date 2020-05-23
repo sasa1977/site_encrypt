@@ -54,15 +54,19 @@ defmodule SiteEncrypt.Certifier do
   end
 
   defp time_to_renew?(config) do
-    case config.certifier.pems(config) do
-      :error ->
+    now = utc_now(config.id)
+    midnight? = now.hour == 0 and now.minute == 0 and now.second == 0
+
+    case {midnight?, config.certifier.pems(config)} do
+      {false, _} ->
+        false
+
+      {true, :error} ->
         true
 
-      {:ok, pems} ->
+      {true, {:ok, pems}} ->
         cert_valid_until = pems |> Keyword.fetch!(:cert) |> cert_valid_until()
-
-        DateTime.diff(cert_valid_until, utc_now(config.id)) <
-          config.renew_before_expires_in_days * 24 * 60 * 60
+        DateTime.diff(cert_valid_until, now) < config.renew_before_expires_in_days * 24 * 60 * 60
     end
   end
 

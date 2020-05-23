@@ -1,6 +1,7 @@
 defmodule SiteEncrypt.Phoenix.Test do
   import ExUnit.Assertions
-  alias SiteEncrypt.{Certifier, Registry}
+  require X509.ASN1
+  alias SiteEncrypt.Registry
 
   @spec verify_certification(SiteEncrypt.id()) :: :ok
   def verify_certification(id) do
@@ -14,17 +15,16 @@ defmodule SiteEncrypt.Phoenix.Test do
     Enum.each(~w/base_folder cert_folder backup/a, &File.rm_rf(Map.fetch!(config, &1)))
     Supervisor.restart_child(root_pid, :site)
 
-    first_cert = await_first_cert(id)
+    cert = await_first_cert(id)
 
-    cert_valid_until = cert_valid_until(first_cert)
+    domains =
+      cert
+      |> X509.Certificate.extension(:subject_alt_name)
+      |> X509.ASN1.extension(:extnValue)
+      |> Keyword.values()
+      |> Enum.map(&to_string/1)
 
-    no_renew_on = add_days(cert_valid_until, -(config.renew_before_expires_in_days + 1))
-    assert Certifier.tick(id, no_renew_on) == {:error, :job_not_started}
-    assert get_cert(id) == first_cert
-
-    renew_on = add_days(cert_valid_until, -(config.renew_before_expires_in_days - 1))
-    assert Certifier.tick(id, renew_on) == :ok
-    assert get_cert(id) != first_cert
+    assert domains == [config.domain | config.extra_domains]
   end
 
   def await_first_cert(id) do
@@ -34,26 +34,12 @@ defmodule SiteEncrypt.Phoenix.Test do
     get_cert(id)
   end
 
-  defp add_days(datetime, days) do
-    date =
-      datetime
-      |> DateTime.to_date()
-      |> Date.add(days)
-
-    Map.merge(datetime, Map.take(date, ~w/year month day/a))
-  end
-
   def get_cert(id) do
     config = Registry.config(id)
     {:ok, socket} = :ssl.connect('localhost', https_port(config), [], :timer.seconds(5))
     {:ok, der_cert} = :ssl.peercert(socket)
     :ssl.close(socket)
     X509.Certificate.from_der!(der_cert)
-  end
-
-  defp cert_valid_until(cert) do
-    {:Validity, _from, to} = X509.Certificate.validity(cert)
-    X509.DateTime.to_datetime(to)
   end
 
   def capture_log(fun) do

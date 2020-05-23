@@ -18,6 +18,24 @@ for certifier <- [Native, Certbot],
       verify_certification(TestEndpoint)
     end
 
+    test "renewal" do
+      SiteEncrypt.Registry.subscribe(TestEndpoint)
+      config = start_site()
+      first_cert = await_first_cert(TestEndpoint)
+
+      cert_valid_until = cert_valid_until(first_cert)
+
+      no_renew_on =
+        midnight(add_days(cert_valid_until, -(config.renew_before_expires_in_days + 2)))
+
+      assert SiteEncrypt.Certifier.tick(TestEndpoint, no_renew_on) == {:error, :job_not_started}
+      assert get_cert(TestEndpoint) == first_cert
+
+      renew_on = midnight(add_days(cert_valid_until, -(config.renew_before_expires_in_days - 2)))
+      assert SiteEncrypt.Certifier.tick(TestEndpoint, renew_on) == :ok
+      assert get_cert(TestEndpoint) != first_cert
+    end
+
     test "force_renew" do
       SiteEncrypt.Registry.subscribe(TestEndpoint)
       start_site()
@@ -29,8 +47,7 @@ for certifier <- [Native, Certbot],
 
     test "backup and restore" do
       SiteEncrypt.Registry.subscribe(TestEndpoint)
-      start_site()
-      config = SiteEncrypt.Registry.config(TestEndpoint)
+      config = start_site()
 
       first_cert = await_first_cert(TestEndpoint)
       assert File.exists?(config.backup)
@@ -57,11 +74,29 @@ for certifier <- [Native, Certbot],
       refute get_cert(TestEndpoint) == first_cert
     end
 
+    defp cert_valid_until(cert) do
+      {:Validity, _from, to} = X509.Certificate.validity(cert)
+      X509.DateTime.to_datetime(to)
+    end
+
+    defp add_days(datetime, days) do
+      date =
+        datetime
+        |> DateTime.to_date()
+        |> Date.add(days)
+
+      Map.merge(datetime, Map.take(date, ~w/year month day/a))
+    end
+
+    defp midnight(datetime), do: %DateTime{datetime | hour: 0, minute: 0, second: 0}
+
     defp start_site do
       start_supervised!(
         {SiteEncrypt.Phoenix, TestEndpoint},
         restart: :permanent
       )
+
+      SiteEncrypt.Registry.config(TestEndpoint)
     end
 
     defmodule TestEndpoint do
