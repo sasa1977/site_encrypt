@@ -26,7 +26,7 @@ defmodule SiteEncrypt.Native do
   defp new_account(config, http_pool) do
     Logger.log(:info, "Creating new ACME account for domain #{hd(config.domains)}")
     ca_url = ca_url(config)
-    session = AcmeClient.new_account(http_pool, ca_url, [config.email])
+    session = AcmeClient.new_account(http_pool, ca_url, [config.emails])
     store_account_key!(config, session.account_key)
     create_certificate(config, session)
   end

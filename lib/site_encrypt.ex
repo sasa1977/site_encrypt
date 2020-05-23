@@ -5,7 +5,7 @@ defmodule SiteEncrypt do
     id: quote(do: id),
     ca_url: quote(do: ca_url),
     domains: quote(do: nonempty_list(String.t())),
-    email: quote(do: String.t()),
+    emails: quote(do: nonempty_list(String.t())),
     db_folder: quote(do: String.t()),
     renew_before_expires_in_days: quote(do: pos_integer()),
     log_level: quote(do: log_level),
@@ -52,6 +52,9 @@ defmodule SiteEncrypt do
 
     if Enum.empty?(config.domains),
       do: raise("You need to provide at least one domain in `:domains` option")
+
+    if Enum.empty?(config.emails),
+      do: raise("You need to provide at least one email in `:emails` option")
 
     config
   end

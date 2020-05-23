@@ -63,7 +63,12 @@ defmodule SiteEncrypt.Certbot do
     certbot_cmd(
       config,
       opts,
-      ~w(certonly -m #{config.email} --webroot --webroot-path #{webroot_folder(config)} --agree-tos) ++
+      ~w(
+        certonly
+        --webroot
+        --webroot-path #{webroot_folder(config)}
+        --agree-tos
+        ) ++
         domain_params(config)
     )
   end
@@ -71,7 +76,6 @@ defmodule SiteEncrypt.Certbot do
   defp renew(config, opts) do
     args = ~w(
         renew
-        -m #{config.email}
         --agree-tos
         --no-random-sleep-on-renew
         --cert-name #{hd(config.domains)}
@@ -86,6 +90,7 @@ defmodule SiteEncrypt.Certbot do
 
   defp common_args(config, opts) do
     ~w(
+      -m #{Enum.join(config.emails, " ")}
       --server #{ca_url(config.ca_url)}
       --work-dir #{work_folder(config)}
       --config-dir #{config_folder(config)}

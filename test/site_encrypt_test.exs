@@ -120,7 +120,7 @@ for certifier <- [Native, Certbot],
         [
           ca_url: local_acme_server(),
           domains: ["localhost", "foo.localhost"],
-          email: "admin@foo.bar",
+          emails: ["admin@foo.bar"],
           db_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("db"),
           backup: Path.join(System.tmp_dir!(), "site_encrypt_backup.tgz"),
           mode: :manual,

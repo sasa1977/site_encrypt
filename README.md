@@ -61,7 +61,7 @@ defmodule PhoenixDemo.Endpoint do
     [
       ca_url: {:local_acme_server, port: 4002},
       domains: ["localhost"],
-      email: "admin@foo.bar",
+      emails: ["admin@foo.bar"],
       db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("db"),
       mode: unquote(if Mix.env() == :test, do: :manual, else: :auto)
     ]
@@ -164,7 +164,7 @@ def certification() do
   [
     ca_url: "https://acme-v02.api.letsencrypt.org/directory",
     domains: ["<DOMAIN NAME>"],
-    email: "<ADMIN EMAIL>"
+    emails: ["<ADMIN EMAIL>"]
     # other parameters can remain the same
   ]
 end

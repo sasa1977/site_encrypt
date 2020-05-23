@@ -34,21 +34,21 @@ defmodule PhoenixDemo.Endpoint do
           [
             ca_url: {:local_acme_server, port: 4002},
             domains: ["localhost"],
-            email: "admin@foo.bar"
+            emails: ["admin@foo.bar"]
           ]
 
         "staging" ->
           [
             ca_url: "https://acme-staging-v02.api.letsencrypt.org/directory",
             domains: ["staging.host.name"],
-            email: "admin@email.address"
+            emails: ["admin@email.address"]
           ]
 
         "production" ->
           [
             ca_url: "https://acme-v02.api.letsencrypt.org/directory",
             domains: ["production.host.name"],
-            email: "admin@email.address"
+            emails: ["admin@email.address"]
           ]
       end
 
