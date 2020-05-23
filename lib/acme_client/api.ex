@@ -1,5 +1,4 @@
 defmodule AcmeClient.API do
-  require Logger
   alias AcmeClient.{Crypto, Http}
 
   def new_session(http_pool, url, account_key) do
@@ -164,8 +163,6 @@ defmodule AcmeClient.API do
   defp id_map(:kid, session), do: %{"kid" => session.kid}
 
   defp http_request(session, verb, url, opts \\ []) do
-    Logger.debug("#{String.upcase(to_string(verb))} #{url}")
-
     case Http.request(session.http_pool, verb, url, headers(opts), Keyword.get(opts, :body)) do
       {:ok, response} ->
         content_type = :proplists.get_value("content-type", response.headers, "")
