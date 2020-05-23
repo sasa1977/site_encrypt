@@ -90,7 +90,7 @@ defmodule SiteEncrypt.Native do
 
   defp root_folder(config) do
     Path.join([
-      config.base_folder,
+      config.db_folder,
       "elixir_acme_client",
       ca_folder(config),
       hd(config.domains)

@@ -19,14 +19,14 @@ defmodule SiteEncrypt.Certifier do
   def restore(config) do
     if not is_nil(config.backup) and
          File.exists?(config.backup) and
-         not File.exists?(config.base_folder) do
+         not File.exists?(config.db_folder) do
       Logger.log(:info, "restoring certificates for #{hd(config.domains)}")
-      File.mkdir_p!(config.base_folder)
+      File.mkdir_p!(config.db_folder)
 
       :ok =
         :erl_tar.extract(
           to_charlist(config.backup),
-          [:compressed, cwd: to_char_list(config.base_folder)]
+          [:compressed, cwd: to_char_list(config.db_folder)]
         )
 
       SiteEncrypt.Certifier.Job.post_certify(config)

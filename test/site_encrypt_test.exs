@@ -7,8 +7,7 @@ for certifier <- [Native, Certbot],
 
     setup do
       config = TestEndpoint.certification()
-      File.rm_rf(Keyword.fetch!(config, :base_folder))
-      File.rm_rf(Keyword.fetch!(config, :cert_folder))
+      File.rm_rf(Keyword.fetch!(config, :db_folder))
       File.rm_rf(Keyword.fetch!(config, :backup))
       :ok
     end
@@ -55,12 +54,10 @@ for certifier <- [Native, Certbot],
       # stop the site and remove all cert folders
       stop_supervised!(SiteEncrypt.Phoenix)
 
-      File.rm_rf!(config.base_folder)
-      File.rm_rf!(config.cert_folder)
+      File.rm_rf!(config.db_folder)
       :ssl.clear_pem_cache()
 
       # restart the site
-      SiteEncrypt.Registry.subscribe(TestEndpoint)
       start_site()
 
       # check that first certification didn't start
@@ -124,10 +121,9 @@ for certifier <- [Native, Certbot],
           ca_url: local_acme_server(),
           domains: ["localhost", "foo.localhost"],
           email: "admin@foo.bar",
-          base_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("certbot"),
-          cert_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("cert"),
-          mode: :manual,
+          db_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("db"),
           backup: Path.join(System.tmp_dir!(), "site_encrypt_backup.tgz"),
+          mode: :manual,
           certifier: unquote(Module.concat(SiteEncrypt, certifier))
         ]
       end

@@ -23,8 +23,7 @@ defmodule PhoenixDemo.Endpoint do
   @impl SiteEncrypt
   def certification do
     common_settings = [
-      base_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("certbot"),
-      cert_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("cert"),
+      db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("db"),
       mode: unquote(if Mix.env() == :test, do: :manual, else: :auto),
       certifier: SiteEncrypt.Native
     ]
@@ -58,7 +57,6 @@ defmodule PhoenixDemo.Endpoint do
 
   @impl SiteEncrypt
   def handle_new_cert do
-    # backup `base_folder` content
     :ok
   end
 end

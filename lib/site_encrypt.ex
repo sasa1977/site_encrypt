@@ -6,8 +6,7 @@ defmodule SiteEncrypt do
     ca_url: quote(do: ca_url),
     domains: quote(do: nonempty_list(String.t())),
     email: quote(do: String.t()),
-    base_folder: quote(do: String.t()),
-    cert_folder: quote(do: String.t()),
+    db_folder: quote(do: String.t()),
     renew_before_expires_in_days: quote(do: pos_integer()),
     log_level: quote(do: log_level),
     mode: quote(do: :auto | :manual),
@@ -37,9 +36,9 @@ defmodule SiteEncrypt do
     config = SiteEncrypt.Registry.config(id)
 
     [
-      keyfile: Path.join(config.cert_folder, "privkey.pem"),
-      certfile: Path.join(config.cert_folder, "cert.pem"),
-      cacertfile: Path.join(config.cert_folder, "chain.pem")
+      keyfile: Path.join(cert_folder(config), "privkey.pem"),
+      certfile: Path.join(cert_folder(config), "cert.pem"),
+      cacertfile: Path.join(cert_folder(config), "chain.pem")
     ]
   end
 
@@ -72,8 +71,8 @@ defmodule SiteEncrypt do
 
   @doc false
   def initialize_certs(config) do
-    File.mkdir_p!(config.cert_folder)
     SiteEncrypt.Certifier.restore(config)
+    File.mkdir_p!(cert_folder(config))
 
     case config.certifier.pems(config) do
       {:ok, keys} -> store_pems(config, keys)
@@ -81,18 +80,19 @@ defmodule SiteEncrypt do
     end
   end
 
-  defp store_pems(config, keys) do
+  @doc false
+  def store_pems(config, keys) do
     Enum.each(
       keys,
       fn {name, content} ->
-        File.write!(Path.join(config.cert_folder, "#{name}.pem"), content)
+        File.write!(Path.join(cert_folder(config), "#{name}.pem"), content)
       end
     )
   end
 
   defp certificates_exist?(config) do
     ~w(privkey.pem cert.pem chain.pem)
-    |> Stream.map(&Path.join(config.cert_folder, &1))
+    |> Stream.map(&Path.join(cert_folder(config), &1))
     |> Enum.all?(&File.exists?/1)
   end
 
@@ -113,5 +113,8 @@ defmodule SiteEncrypt do
   defp file_name(:server_key), do: "privkey.pem"
 
   defp save_pem!(config, {file_name, contents}),
-    do: File.write!(Path.join(config.cert_folder, file_name), contents)
+    do: File.write!(Path.join(cert_folder(config), file_name), contents)
+
+  defp cert_folder(config),
+    do: Path.join(config.db_folder, "certs/")
 end

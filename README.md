@@ -59,11 +59,10 @@ defmodule PhoenixDemo.Endpoint do
   @impl SiteEncrypt
   def certification do
     [
-      base_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("certbot"),
-      cert_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("cert"),
       ca_url: {:local_acme_server, port: 4002},
-      domain: "localhost",
-      email: "admin@foo.bar"
+      domains: ["localhost"],
+      email: "admin@foo.bar",
+      db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("db"),
       mode: unquote(if Mix.env() == :test, do: :manual, else: :auto)
     ]
   end
@@ -164,7 +163,7 @@ You need to change some parameters in `certification/1` callback.
 def certification() do
   [
     ca_url: "https://acme-v02.api.letsencrypt.org/directory",
-    domain: "<DOMAIN NAME>",
+    domains: ["<DOMAIN NAME>"],
     email: "<ADMIN EMAIL>"
     # other parameters can remain the same
   ]
@@ -179,14 +178,14 @@ It's up to you to decide how to vary the settings between local development and 
 
 ## Backup and restore
 
-SiteEncrypt supports automatic backup. To enable it, include `backup: path_to_backup_tgz` in the options returned by `config/0`. Every time a new certificate is obtained, the entire content of the `base_folder` will be backed up to this file as a compressed tarball. This happens before `handle_new_cert` is invoked.
+SiteEncrypt supports automatic backup. To enable it, include `backup: path_to_backup_tgz` in the options returned by `config/0`. Every time a new certificate is obtained, the entire content of the `db_folder` will be backed up to this file as a compressed tarball. This happens before `handle_new_cert` is invoked.
 
 Note that this file is not encrypted, so make sure to restrict the access to it, or otherwise postprocess it (e.g. encrypt it) in the `handle_new_cert` callback.
 
 The backup is automatically restored when the endpoint is started if the following conditions are met:
 
 1. The backup file exists at the location configured via the `:backup` option
-2. The `base_folder` doesn't exist
+2. The `db_folder` doesn't exist
 
 Note that a successful restore is treated as a certificate renewal, which means that the new certificate will be backed up (if configured), and `handle_new_cert` will be invoked.
 

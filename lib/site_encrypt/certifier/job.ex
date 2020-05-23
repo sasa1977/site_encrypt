@@ -20,7 +20,8 @@ defmodule SiteEncrypt.Certifier.Job do
   end
 
   def post_certify(config) do
-    SiteEncrypt.initialize_certs(config)
+    {:ok, keys} = config.certifier.pems(config)
+    SiteEncrypt.store_pems(config, keys)
     :ssl.clear_pem_cache()
 
     unless is_nil(config.backup), do: backup(config)
@@ -59,7 +60,7 @@ defmodule SiteEncrypt.Certifier.Job do
   defp backup(config) do
     {:ok, tar} = :erl_tar.open(to_charlist(config.backup), [:write, :compressed])
 
-    config.base_folder
+    config.db_folder
     |> Path.join("*")
     |> Path.wildcard()
     |> Enum.each(fn path ->
@@ -67,7 +68,7 @@ defmodule SiteEncrypt.Certifier.Job do
         :erl_tar.add(
           tar,
           to_charlist(path),
-          to_charlist(Path.relative_to(path, config.base_folder)),
+          to_charlist(Path.relative_to(path, config.db_folder)),
           []
         )
     end)

@@ -44,7 +44,7 @@ defmodule SiteEncrypt.Certbot do
   @impl SiteEncrypt.Certifier.Job
   def full_challenge(config, challenge) do
     Path.join([
-      webroot_folder(%{base_folder: config.base_folder}),
+      webroot_folder(%{db_folder: config.db_folder}),
       ".well-known",
       "acme-challenge",
       challenge
@@ -104,10 +104,10 @@ defmodule SiteEncrypt.Certbot do
   defp domain_params(config), do: Enum.map(config.domains, &"-d #{&1}")
 
   defp keys_folder(config), do: Path.join(~w(#{config_folder(config)} live #{hd(config.domains)}))
-  defp config_folder(config), do: Path.join(config.base_folder, "config")
-  defp log_folder(config), do: Path.join(config.base_folder, "log")
-  defp work_folder(config), do: Path.join(config.base_folder, "work")
-  defp webroot_folder(config), do: Path.join(config.base_folder, "webroot")
+  defp config_folder(config), do: Path.join(config.db_folder, "config")
+  defp log_folder(config), do: Path.join(config.db_folder, "log")
+  defp work_folder(config), do: Path.join(config.db_folder, "work")
+  defp webroot_folder(config), do: Path.join(config.db_folder, "webroot")
 
   defp keyfile(config), do: Path.join(keys_folder(config), "privkey.pem")
   defp certfile(config), do: Path.join(keys_folder(config), "cert.pem")
