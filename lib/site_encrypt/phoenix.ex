@@ -55,12 +55,7 @@ defmodule SiteEncrypt.Phoenix do
     )
   end
 
-  defp acme_server_adapter_spec(port) do
-    {
-      Plug.Cowboy,
-      options: [port: port]
-    }
-  end
+  defp acme_server_adapter_spec(port), do: {Plug.Cowboy, options: [port: port]}
 
   defp dns(config) do
     [config.domain | config.extra_domains]

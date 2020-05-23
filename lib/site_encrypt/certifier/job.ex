@@ -11,10 +11,10 @@ defmodule SiteEncrypt.Certifier.Job do
   @callback certify(SiteEncrypt.config(), http_pool :: pid, force_renewal: boolean) ::
               :new_cert | :no_change | :error
 
-  def start_link({config, opts}) do
+  def start_link(config) do
     Parent.GenServer.start_link(
       __MODULE__,
-      {config, opts},
+      config,
       name: SiteEncrypt.Registry.name(config.id, __MODULE__)
     )
   end
@@ -30,11 +30,9 @@ defmodule SiteEncrypt.Certifier.Job do
   end
 
   @impl GenServer
-  def init({config, opts}) do
+  def init(config) do
     opts =
-      if match?({:local_acme_server, _}, config.ca_url),
-        do: [{:verify_server_cert, false} | opts],
-        else: opts
+      if match?({:local_acme_server, _}, config.ca_url), do: [verify_server_cert: false], else: []
 
     {:ok, http_pool} = Parent.GenServer.start_child({AcmeClient.Http, opts})
 

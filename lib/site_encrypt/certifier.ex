@@ -2,17 +2,18 @@ defmodule SiteEncrypt.Certifier do
   alias SiteEncrypt.{Logger, Registry}
 
   def start_link(config) do
-    Supervisor.start_link(
-      [
-        job_parent_spec(config),
-        periodic_scheduler_spec(config)
-      ],
-      strategy: :one_for_one
-    )
+    with {:ok, pid} <-
+           Supervisor.start_link(
+             [job_parent_spec(config), periodic_scheduler_spec(config)],
+             strategy: :one_for_one
+           ) do
+      if config.certifier.pems(config) == :error, do: start_renew(config)
+      {:ok, pid}
+    end
   end
 
   @spec force_renew(SiteEncrypt.id()) :: :already_started | :finished
-  def force_renew(id), do: run_job(Registry.config(id), force_renewal: true)
+  def force_renew(id), do: run_renew(Registry.config(id))
 
   @spec restore(SiteEncrypt.config()) :: :ok
   def restore(config) do
@@ -43,9 +44,9 @@ defmodule SiteEncrypt.Certifier do
   defp periodic_scheduler_spec(config) do
     Periodic.child_spec(
       id: __MODULE__.Scheduler,
-      run: fn -> run_job(config, []) end,
+      run: fn -> run_renew(config) end,
       every: :timer.seconds(1),
-      when: fn -> time_to_renew?(config) or config.certifier.pems(config) == :error end,
+      when: fn -> time_to_renew?(config) end,
       on_overlap: :ignore,
       mode: config.mode,
       name: Registry.name(config.id, __MODULE__.Scheduler)
@@ -53,17 +54,22 @@ defmodule SiteEncrypt.Certifier do
   end
 
   defp time_to_renew?(config) do
-    renew_interval_sec = div(config.renew_interval, 1000)
-    utc_now(config.id) |> DateTime.to_unix() |> rem(renew_interval_sec) == 0
+    case config.certifier.pems(config) do
+      :error ->
+        true
+
+      {:ok, pems} ->
+        cert_valid_until = pems |> Keyword.fetch!(:cert) |> cert_valid_until()
+
+        DateTime.diff(cert_valid_until, utc_now(config.id)) <
+          config.renew_before_expires_in_days * 24 * 60 * 60
+    end
   end
 
   defp utc_now(id), do: :persistent_term.get({__MODULE__, id}, DateTime.utc_now())
 
-  defp run_job(config, opts) do
-    case DynamicSupervisor.start_child(
-           Registry.name(config.id, __MODULE__.JobParent),
-           Supervisor.child_spec({SiteEncrypt.Certifier.Job, {config, opts}}, restart: :temporary)
-         ) do
+  defp run_renew(config) do
+    case start_renew(config) do
       {:ok, pid} ->
         mref = Process.monitor(pid)
 
@@ -73,6 +79,17 @@ defmodule SiteEncrypt.Certifier do
 
       {:error, {:already_started, _pid}} ->
         :already_started
+    end
+  end
+
+  defp start_renew(config) do
+    with {:ok, pid} <-
+           DynamicSupervisor.start_child(
+             Registry.name(config.id, __MODULE__.JobParent),
+             Supervisor.child_spec({SiteEncrypt.Certifier.Job, config}, restart: :temporary)
+           ) do
+      Registry.publish(config.id, {:renew_started, pid})
+      {:ok, pid}
     end
   end
 
@@ -96,5 +113,14 @@ defmodule SiteEncrypt.Certifier do
       start: {__MODULE__, :start_link, [config]},
       type: :supervisor
     }
+  end
+
+  defp cert_valid_until(pem) do
+    {:Validity, _from, to} =
+      pem
+      |> X509.Certificate.from_pem!()
+      |> X509.Certificate.validity()
+
+    X509.DateTime.to_datetime(to)
   end
 end

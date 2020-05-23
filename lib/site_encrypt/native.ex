@@ -2,7 +2,6 @@ defmodule SiteEncrypt.Native do
   @behaviour SiteEncrypt.Certifier.Job
   require Logger
 
-  alias AcmeClient.Crypto
   alias SiteEncrypt.{Certifier.Job, Logger}
 
   @impl Job
@@ -14,10 +13,10 @@ defmodule SiteEncrypt.Native do
   end
 
   @impl Job
-  def certify(config, http_pool, opts) do
+  def certify(config, http_pool, _opts) do
     case account_key(config) do
       nil -> new_account(config, http_pool)
-      account_key -> new_cert(config, http_pool, account_key, opts)
+      account_key -> new_cert(config, http_pool, account_key)
     end
   end
 
@@ -32,26 +31,10 @@ defmodule SiteEncrypt.Native do
     create_certificate(config, session)
   end
 
-  defp new_cert(config, http_pool, account_key, opts) do
-    if Keyword.get(opts, :force_renewal) == true or cert_needs_renewal?(config) do
-      ca_url = ca_url(config)
-      session = AcmeClient.for_existing_account(http_pool, ca_url, account_key)
-      create_certificate(config, session)
-    else
-      :no_change
-    end
-  end
-
-  defp cert_needs_renewal?(config) do
-    case pems(config) do
-      {:ok, pems} ->
-        cert = Keyword.fetch!(pems, :cert)
-        expires_in_seconds = DateTime.diff(Crypto.cert_valid_until(cert), DateTime.utc_now())
-        expires_in_seconds < 30 * 24 * 60 * 60
-
-      :error ->
-        true
-    end
+  defp new_cert(config, http_pool, account_key) do
+    ca_url = ca_url(config)
+    session = AcmeClient.for_existing_account(http_pool, ca_url, account_key)
+    create_certificate(config, session)
   end
 
   defp create_certificate(config, session) do

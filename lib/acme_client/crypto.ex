@@ -19,13 +19,4 @@ defmodule AcmeClient.Crypto do
       pem -> pem <> "\n"
     end
   end
-
-  def cert_valid_until(pem) do
-    {:Validity, _from, to} =
-      pem
-      |> X509.Certificate.from_pem!()
-      |> X509.Certificate.validity()
-
-    X509.DateTime.to_datetime(to)
-  end
 end

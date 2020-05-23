@@ -5,32 +5,35 @@ for certifier <- [Native, Certbot],
     alias __MODULE__.TestEndpoint
     import SiteEncrypt.Phoenix.Test
 
+    setup do
+      config = TestEndpoint.certification()
+      File.rm_rf(Keyword.fetch!(config, :base_folder))
+      File.rm_rf(Keyword.fetch!(config, :cert_folder))
+      File.rm_rf(Keyword.fetch!(config, :backup))
+      :ok
+    end
+
     test "certification" do
       start_site()
-
-      verify_certification(TestEndpoint, [
-        ~U[2020-01-01 00:00:00Z],
-        ~U[2020-02-01 00:00:00Z]
-      ])
+      verify_certification(TestEndpoint)
     end
 
     test "force_renew" do
+      SiteEncrypt.Registry.subscribe(TestEndpoint)
       start_site()
-      first_cert = get_cert(TestEndpoint)
+      first_cert = await_first_cert(TestEndpoint)
 
       assert SiteEncrypt.Certifier.force_renew(TestEndpoint) == :finished
       assert get_cert(TestEndpoint) != first_cert
     end
 
     test "backup and restore" do
+      SiteEncrypt.Registry.subscribe(TestEndpoint)
       start_site()
       config = SiteEncrypt.Registry.config(TestEndpoint)
 
-      # force renew and verify that backup is made
-      :finished = SiteEncrypt.Certifier.force_renew(TestEndpoint)
+      first_cert = await_first_cert(TestEndpoint)
       assert File.exists?(config.backup)
-
-      backed_up_cert = get_cert(TestEndpoint)
 
       # stop the site and remove all cert folders
       stop_supervised!(SiteEncrypt.Phoenix)
@@ -40,17 +43,18 @@ for certifier <- [Native, Certbot],
       :ssl.clear_pem_cache()
 
       # restart the site
+      SiteEncrypt.Registry.subscribe(TestEndpoint)
       start_site()
 
+      # check that first certification didn't start
+      refute_receive {:site_encrypt_notification, TestEndpoint, {:renew_started, _}}
+
       # make sure the cert is restored
-      assert get_cert(TestEndpoint) == backed_up_cert
+      assert get_cert(TestEndpoint) == first_cert
 
       # make sure that renewal is still working correctly
       assert :finished = SiteEncrypt.Certifier.force_renew(TestEndpoint)
-      refute get_cert(TestEndpoint) == backed_up_cert
-
-      # double check that the certifier ticks after the restore
-      assert SiteEncrypt.Certifier.tick(TestEndpoint, ~U[2020-01-01 00:00:00Z]) == :ok
+      refute get_cert(TestEndpoint) == first_cert
     end
 
     defp start_site do

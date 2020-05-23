@@ -69,18 +69,17 @@ defmodule SiteEncrypt.Certbot do
   end
 
   defp renew(config, opts) do
-    args =
-      Enum.reduce(
-        opts,
-        ~w(-m #{config.email} --agree-tos --no-random-sleep-on-renew --cert-name #{config.domain}),
-        &add_arg/2
+    args = ~w(
+        renew
+        -m #{config.email}
+        --agree-tos
+        --no-random-sleep-on-renew
+        --cert-name #{config.domain}
+        --force-renewal
       )
 
-    certbot_cmd(config, opts, ["renew" | args])
+    certbot_cmd(config, opts, args)
   end
-
-  defp add_arg({:force_renewal, true}, args), do: ["--force-renewal" | args]
-  defp add_arg(_, args), do: args
 
   defp certbot_cmd(config, opts, args),
     do: System.cmd("certbot", args ++ common_args(config, opts), stderr_to_stdout: true)

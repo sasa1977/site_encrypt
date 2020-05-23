@@ -9,7 +9,7 @@ defmodule SiteEncrypt do
     email: quote(do: String.t()),
     base_folder: quote(do: String.t()),
     cert_folder: quote(do: String.t()),
-    renew_interval: quote(do: pos_integer()),
+    renew_before_expires_in_days: quote(do: pos_integer()),
     log_level: quote(do: log_level),
     mode: quote(do: :auto | :manual),
     callback: quote(do: __MODULE__),
@@ -46,24 +46,16 @@ defmodule SiteEncrypt do
 
   @doc false
   @spec normalized_config(module, certification) :: config
-  def normalized_config(callback, defaults \\ []) do
-    config =
-      defaults()
-      |> Map.merge(Map.new(defaults))
-      |> Map.merge(Map.new(callback.certification()))
-
-    if rem(config.renew_interval, 1000) != 0,
-      do: raise("renew interval must be divisible by 1000 (i.e. expressed in seconds)")
-
-    if config.renew_interval < 1000,
-      do: raise("renew interval must be larger than 1 second")
-
-    Map.put(config, :callback, callback)
+  def normalized_config(callback, adapter_defaults \\ []) do
+    defaults()
+    |> Map.merge(Map.new(adapter_defaults))
+    |> Map.merge(Map.new(callback.certification()))
+    |> Map.put(:callback, callback)
   end
 
   defp defaults do
     %{
-      renew_interval: :timer.hours(24),
+      renew_before_expires_in_days: 30,
       extra_domains: [],
       log_level: :info,
       mode: :auto,
