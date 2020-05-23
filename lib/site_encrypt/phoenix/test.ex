@@ -24,7 +24,7 @@ defmodule SiteEncrypt.Phoenix.Test do
       |> Keyword.values()
       |> Enum.map(&to_string/1)
 
-    assert domains == [config.domain | config.extra_domains]
+    assert domains == config.domains
   end
 
   def await_first_cert(id) do

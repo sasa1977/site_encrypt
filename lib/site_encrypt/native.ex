@@ -24,7 +24,7 @@ defmodule SiteEncrypt.Native do
   def full_challenge(_config, _challenge), do: raise("shouldn't land here")
 
   defp new_account(config, http_pool) do
-    Logger.log(:info, "Creating new ACME account for domain #{config.domain}")
+    Logger.log(:info, "Creating new ACME account for domain #{hd(config.domains)}")
     ca_url = ca_url(config)
     session = AcmeClient.new_account(http_pool, ca_url, [config.email])
     store_account_key!(config, session.account_key)
@@ -38,12 +38,12 @@ defmodule SiteEncrypt.Native do
   end
 
   defp create_certificate(config, session) do
-    Logger.log(config.log_level, "Ordering a new certificate for domain #{config.domain}")
+    Logger.log(config.log_level, "Ordering a new certificate for domain #{hd(config.domains)}")
 
     {pems, _session} =
       AcmeClient.create_certificate(session, %{
         id: config.id,
-        domains: [config.domain | config.extra_domains],
+        domains: config.domains,
         register_challenge: &SiteEncrypt.Registry.register_challenge!(config.id, &1, &2),
         await_challenge: fn ->
           receive do
@@ -55,7 +55,7 @@ defmodule SiteEncrypt.Native do
       })
 
     store_pems!(config, pems)
-    Logger.log(config.log_level, "New certificate for domain #{config.domain} obtained")
+    Logger.log(config.log_level, "New certificate for domain #{hd(config.domains)} obtained")
     :new_cert
   end
 
@@ -88,8 +88,14 @@ defmodule SiteEncrypt.Native do
   defp load_file!(config, name),
     do: File.read!(Path.join(root_folder(config), name))
 
-  defp root_folder(config),
-    do: Path.join([config.base_folder, "elixir_acme_client", ca_folder(config), config.domain])
+  defp root_folder(config) do
+    Path.join([
+      config.base_folder,
+      "elixir_acme_client",
+      ca_folder(config),
+      hd(config.domains)
+    ])
+  end
 
   defp ca_folder(config), do: URI.parse(ca_url(config)).host
 

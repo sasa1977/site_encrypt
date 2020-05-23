@@ -4,8 +4,7 @@ defmodule SiteEncrypt do
   config_type = [
     id: quote(do: id),
     ca_url: quote(do: ca_url),
-    domain: quote(do: String.t()),
-    extra_domains: quote(do: [String.t()]),
+    domains: quote(do: nonempty_list(String.t())),
     email: quote(do: String.t()),
     base_folder: quote(do: String.t()),
     cert_folder: quote(do: String.t()),
@@ -47,16 +46,22 @@ defmodule SiteEncrypt do
   @doc false
   @spec normalized_config(module, certification) :: config
   def normalized_config(callback, adapter_defaults \\ []) do
-    defaults()
-    |> Map.merge(Map.new(adapter_defaults))
-    |> Map.merge(Map.new(callback.certification()))
-    |> Map.put(:callback, callback)
+    config =
+      defaults()
+      |> Map.merge(Map.new(adapter_defaults))
+      |> Map.merge(Map.new(callback.certification()))
+      |> Map.put(:callback, callback)
+
+    if Enum.empty?(config.domains),
+      do: raise("You need to provide at least one domain in `:domains` option")
+
+    config
   end
 
   defp defaults do
     %{
       renew_before_expires_in_days: 30,
-      extra_domains: [],
+      domains: [],
       log_level: :info,
       mode: :auto,
       assigns: %{},
@@ -97,7 +102,7 @@ defmodule SiteEncrypt do
         "This certificate will be used until a proper certificate is issued by the CA server."
     )
 
-    [config.domain | config.extra_domains]
+    config.domains
     |> AcmeServer.Crypto.self_signed_chain()
     |> Stream.map(fn {type, pem} -> {file_name(type), pem} end)
     |> Enum.each(&save_pem!(config, &1))

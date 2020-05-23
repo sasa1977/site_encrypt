@@ -20,7 +20,7 @@ defmodule SiteEncrypt.Certifier do
     if not is_nil(config.backup) and
          File.exists?(config.backup) and
          not File.exists?(config.base_folder) do
-      Logger.log(:info, "restoring certificates for #{config.domain}")
+      Logger.log(:info, "restoring certificates for #{hd(config.domains)}")
       File.mkdir_p!(config.base_folder)
 
       :ok =
@@ -30,7 +30,7 @@ defmodule SiteEncrypt.Certifier do
         )
 
       SiteEncrypt.Certifier.Job.post_certify(config)
-      Logger.log(:info, "certificates for #{config.domain} restored")
+      Logger.log(:info, "certificates for #{hd(config.domains)} restored")
     end
   end
 

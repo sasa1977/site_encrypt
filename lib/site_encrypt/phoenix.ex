@@ -58,7 +58,7 @@ defmodule SiteEncrypt.Phoenix do
   defp acme_server_adapter_spec(port), do: {Plug.Cowboy, options: [port: port]}
 
   defp dns(config) do
-    [config.domain | config.extra_domains]
+    config.domains
     |> Enum.map(
       &{&1,
        fn -> "localhost:#{config.assigns.endpoint.config(:http) |> Keyword.fetch!(:port)}" end}

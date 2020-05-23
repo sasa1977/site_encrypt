@@ -74,7 +74,7 @@ defmodule SiteEncrypt.Certbot do
         -m #{config.email}
         --agree-tos
         --no-random-sleep-on-renew
-        --cert-name #{config.domain}
+        --cert-name #{hd(config.domains)}
         --force-renewal
       )
 
@@ -101,9 +101,9 @@ defmodule SiteEncrypt.Certbot do
 
   defp ca_url(ca_url), do: ca_url
 
-  defp domain_params(config), do: Enum.map([config.domain | config.extra_domains], &"-d #{&1}")
+  defp domain_params(config), do: Enum.map(config.domains, &"-d #{&1}")
 
-  defp keys_folder(config), do: Path.join(~w(#{config_folder(config)} live #{config.domain}))
+  defp keys_folder(config), do: Path.join(~w(#{config_folder(config)} live #{hd(config.domains)}))
   defp config_folder(config), do: Path.join(config.base_folder, "config")
   defp log_folder(config), do: Path.join(config.base_folder, "log")
   defp work_folder(config), do: Path.join(config.base_folder, "work")

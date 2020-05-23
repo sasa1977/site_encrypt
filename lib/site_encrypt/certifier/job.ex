@@ -50,7 +50,7 @@ defmodule SiteEncrypt.Certifier.Job do
 
   defp certify(config, http_pool, opts) do
     case config.certifier.certify(config, http_pool, opts) do
-      :error -> Logger.log(:error, "Error obtaining certificate for #{config.domain}")
+      :error -> Logger.log(:error, "Error obtaining certificate for #{hd(config.domains)}")
       :new_cert -> post_certify(config)
       :no_change -> :ok
     end

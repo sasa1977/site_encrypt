@@ -122,8 +122,7 @@ for certifier <- [Native, Certbot],
       def certification do
         [
           ca_url: local_acme_server(),
-          domain: "localhost",
-          extra_domains: ["foo.localhost"],
+          domains: ["localhost", "foo.localhost"],
           email: "admin@foo.bar",
           base_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("certbot"),
           cert_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("cert"),
