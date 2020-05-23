@@ -35,8 +35,7 @@ defmodule SiteEncrypt.Phoenix.Test do
   end
 
   def get_cert(id) do
-    config = Registry.config(id)
-    {:ok, socket} = :ssl.connect('localhost', https_port(config), [], :timer.seconds(5))
+    {:ok, socket} = :ssl.connect('localhost', https_port(id), [], :timer.seconds(5))
     {:ok, der_cert} = :ssl.peercert(socket)
     :ssl.close(socket)
     X509.Certificate.from_der!(der_cert)
@@ -53,5 +52,5 @@ defmodule SiteEncrypt.Phoenix.Test do
     end
   end
 
-  defp https_port(config), do: config.assigns.endpoint.config(:https) |> Keyword.fetch!(:port)
+  defp https_port(endpoint), do: Keyword.fetch!(endpoint.config(:https), :port)
 end

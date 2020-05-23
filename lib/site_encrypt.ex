@@ -11,7 +11,6 @@ defmodule SiteEncrypt do
     log_level: quote(do: log_level),
     mode: quote(do: :auto | :manual),
     callback: quote(do: __MODULE__),
-    assigns: quote(do: map),
     backup: quote(do: String.t()),
     certifier: quote(do: SiteEncrypt.Native | SiteEncrypt.Certbot)
   ]
@@ -22,7 +21,7 @@ defmodule SiteEncrypt do
           backup: String.t() | nil
         }
 
-  @type certification :: unquote(Keyword.drop(config_type, ~w/callback assigns/a))
+  @type certification :: unquote(Keyword.drop(config_type, ~w/callback/a))
 
   @type id :: any
   @type ca_url :: String.t() | {:local_acme_server, [port: pos_integer]}
@@ -63,7 +62,6 @@ defmodule SiteEncrypt do
       domains: [],
       log_level: :info,
       mode: :auto,
-      assigns: %{},
       backup: nil,
       certifier: SiteEncrypt.Certbot
     }
