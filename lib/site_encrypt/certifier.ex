@@ -1,5 +1,5 @@
 defmodule SiteEncrypt.Certifier do
-  alias SiteEncrypt.{Logger, Registry}
+  alias SiteEncrypt.Registry
 
   def start_link(config) do
     with {:ok, pid} <-
@@ -22,7 +22,7 @@ defmodule SiteEncrypt.Certifier do
     if not is_nil(config.backup) and
          File.exists?(config.backup) and
          not File.exists?(config.db_folder) do
-      Logger.log(:info, "restoring certificates for #{hd(config.domains)}")
+      SiteEncrypt.log(config, "restoring certificates for #{hd(config.domains)}")
       File.mkdir_p!(config.db_folder)
 
       :ok =
@@ -32,7 +32,7 @@ defmodule SiteEncrypt.Certifier do
         )
 
       SiteEncrypt.Certifier.Job.post_certify(config)
-      Logger.log(:info, "certificates for #{hd(config.domains)} restored")
+      SiteEncrypt.log(config, "certificates for #{hd(config.domains)} restored")
     end
   end
 

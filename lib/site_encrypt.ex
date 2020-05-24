@@ -33,6 +33,8 @@ defmodule SiteEncrypt do
     ]
   end
 
+  def log(config, chardata_or_fun), do: Logger.log(config.log_level, chardata_or_fun)
+
   defmacro configure(opts) do
     quote do
       unquote(__MODULE__).normalized_config(unquote(opts), __MODULE__, unquote(Mix.env()))
@@ -94,7 +96,8 @@ defmodule SiteEncrypt do
   end
 
   defp generate_self_signed_certificate!(config) do
-    Logger.info(
+    log(
+      config,
       "Generating a temporary self-signed certificate. " <>
         "This certificate will be used until a proper certificate is issued by the CA server."
     )

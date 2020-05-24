@@ -1,6 +1,6 @@
 defmodule SiteEncrypt.Certbot do
   @behaviour SiteEncrypt.Certifier.Job
-  alias SiteEncrypt.Logger
+  require Logger
 
   @impl SiteEncrypt.Certifier.Job
   def pems(config) do
@@ -32,11 +32,11 @@ defmodule SiteEncrypt.Certbot do
 
     case result do
       {output, 0} ->
-        Logger.log(config.log_level, output)
+        SiteEncrypt.log(config, output)
         if keys_sha(config) != original_keys_sha, do: :new_cert, else: :no_change
 
       {output, _error} ->
-        Logger.log(:error, output)
+        Logger.error(output)
         :error
     end
   end

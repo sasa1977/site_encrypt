@@ -1,6 +1,5 @@
 defmodule SiteEncrypt.Certifier.Job do
   use Parent.GenServer
-  alias SiteEncrypt.Logger
   require Logger
 
   @type pems :: [privkey: String.t(), cert: String.t(), chain: String.t()]
@@ -51,7 +50,7 @@ defmodule SiteEncrypt.Certifier.Job do
 
   defp certify(config, http_pool, opts) do
     case config.certifier.certify(config, http_pool, opts) do
-      :error -> Logger.log(:error, "Error obtaining certificate for #{hd(config.domains)}")
+      :error -> Logger.error("Error obtaining certificate for #{hd(config.domains)}")
       :new_cert -> post_certify(config)
       :no_change -> :ok
     end
@@ -76,8 +75,7 @@ defmodule SiteEncrypt.Certifier.Job do
     :ok = :erl_tar.close(tar)
   catch
     type, error ->
-      Logger.log(
-        :error,
+      Logger.error(
         "Error backing up certificate: #{Exception.format(type, error, __STACKTRACE__)}"
       )
   end

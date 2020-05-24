@@ -109,7 +109,7 @@ defmodule SiteEncrypt.Phoenix do
 
   defp acme_server_spec(%{directory_url: {:internal, acme_server_config}} = config, endpoint) do
     port = Keyword.fetch!(acme_server_config, :port)
-    SiteEncrypt.Logger.log(config.log_level, "Running local ACME server at port #{port}")
+    SiteEncrypt.log(config, "Running local ACME server at port #{port}")
 
     AcmeServer.Standalone.child_spec(
       adapter: {Plug.Cowboy, options: [port: port]},

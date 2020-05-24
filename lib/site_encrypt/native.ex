@@ -2,7 +2,7 @@ defmodule SiteEncrypt.Native do
   @behaviour SiteEncrypt.Certifier.Job
   require Logger
 
-  alias SiteEncrypt.{Certifier.Job, Logger}
+  alias SiteEncrypt.Certifier.Job
 
   @impl Job
   def pems(config) do
@@ -26,7 +26,7 @@ defmodule SiteEncrypt.Native do
   defp internal_ca?(config), do: match?({:internal, _}, config.directory_url)
 
   defp new_account(config, http_pool) do
-    Logger.log(:info, "Creating new ACME account for domain #{hd(config.domains)}")
+    SiteEncrypt.log(config, "Creating new ACME account for domain #{hd(config.domains)}")
     directory_url = directory_url(config)
 
     session =
@@ -49,7 +49,7 @@ defmodule SiteEncrypt.Native do
 
   defp create_certificate(config, session) do
     id = config.id
-    Logger.log(config.log_level, "Ordering a new certificate for domain #{hd(config.domains)}")
+    SiteEncrypt.log(config, "Ordering a new certificate for domain #{hd(config.domains)}")
 
     {pems, _session} =
       AcmeClient.create_certificate(session, %{
@@ -68,7 +68,7 @@ defmodule SiteEncrypt.Native do
       })
 
     store_pems!(config, pems)
-    Logger.log(config.log_level, "New certificate for domain #{hd(config.domains)} obtained")
+    SiteEncrypt.log(config, "New certificate for domain #{hd(config.domains)} obtained")
     :new_cert
   end
 
