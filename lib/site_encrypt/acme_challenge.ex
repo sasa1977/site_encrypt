@@ -17,7 +17,7 @@ defmodule SiteEncrypt.AcmeChallenge do
   defp challenge_response(id, challenge) do
     case Registry.get_challenge(id, challenge) do
       {pid, key_thumbprint} ->
-        send(pid, :got_challenge)
+        send(pid, {:got_challenge, id})
         "#{challenge}.#{key_thumbprint}"
 
       nil ->

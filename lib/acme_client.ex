@@ -2,8 +2,8 @@ defmodule AcmeClient do
   alias AcmeClient.API
   alias AcmeClient.Crypto
 
-  def new_account(http_pool, directory_url, contacts) do
-    account_key = JOSE.JWK.generate_key({:rsa, 2048})
+  def new_account(http_pool, directory_url, contacts, opts \\ []) do
+    account_key = JOSE.JWK.generate_key({:rsa, Keyword.get(opts, :key_length, 2048)})
     session = start_session(http_pool, directory_url, account_key)
     {:ok, session} = API.new_account(session, contacts)
     session
@@ -56,7 +56,7 @@ defmodule AcmeClient do
   end
 
   defp process_new_order(session, %{status: :ready} = order, config) do
-    private_key = Crypto.new_private_key(2048)
+    private_key = Crypto.new_private_key(Map.get(config, :key_length, 2048))
     csr = Crypto.csr(private_key, config.domains)
 
     {:ok, _finalization, session} = API.finalize(session, order, csr)
@@ -112,7 +112,7 @@ defmodule AcmeClient do
       session,
       operation,
       Map.get(config, :attempts, 60),
-      Map.get(config, :delay, :timer.seconds(1))
+      Map.get(config, :poll_delay, :timer.seconds(1))
     )
   end
 

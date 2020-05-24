@@ -23,10 +23,20 @@ defmodule SiteEncrypt.Native do
   @impl Job
   def full_challenge(_config, _challenge), do: raise("shouldn't land here")
 
+  defp internal_ca?(config), do: match?({:internal, _}, config.directory_url)
+
   defp new_account(config, http_pool) do
     Logger.log(:info, "Creating new ACME account for domain #{hd(config.domains)}")
     directory_url = directory_url(config)
-    session = AcmeClient.new_account(http_pool, directory_url, [config.emails])
+
+    session =
+      AcmeClient.new_account(
+        http_pool,
+        directory_url,
+        [config.emails],
+        key_length: if(internal_ca?(config), do: 1024, else: 2048)
+      )
+
     store_account_key!(config, session.account_key)
     create_certificate(config, session)
   end
@@ -38,16 +48,19 @@ defmodule SiteEncrypt.Native do
   end
 
   defp create_certificate(config, session) do
+    id = config.id
     Logger.log(config.log_level, "Ordering a new certificate for domain #{hd(config.domains)}")
 
     {pems, _session} =
       AcmeClient.create_certificate(session, %{
         id: config.id,
         domains: config.domains,
-        register_challenge: &SiteEncrypt.Registry.register_challenge!(config.id, &1, &2),
+        poll_delay: if(internal_ca?(config), do: 50, else: :timer.seconds(2)),
+        key_length: if(internal_ca?(config), do: 1024, else: 2048),
+        register_challenge: &SiteEncrypt.Registry.register_challenge!(id, &1, &2),
         await_challenge: fn ->
           receive do
-            :got_challenge -> true
+            {:got_challenge, ^id} -> true
           after
             :timer.minutes(1) -> false
           end
