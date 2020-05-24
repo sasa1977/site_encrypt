@@ -48,6 +48,15 @@ defmodule SiteEncrypt.Phoenix do
     )
   end
 
+  @doc false
+  def restart_site(id, fun) do
+    root_pid = SiteEncrypt.Registry.whereis(id, :root)
+    Supervisor.terminate_child(root_pid, :site)
+    fun.()
+    Supervisor.restart_child(root_pid, :site)
+    :ok
+  end
+
   @impl Supervisor
   def init({config, endpoint}) do
     :ok = SiteEncrypt.Registry.register_main_site(config)

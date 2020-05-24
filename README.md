@@ -132,16 +132,11 @@ Of course, in real production you want to backup this folder after every change,
 
 #### Testing
 
-It's possible to add an automated test of the certification:
+You can test the certification in the following way:
 
 ```elixir
 defmodule PhoenixDemo.EndpointTest do
-  use ExUnit.Case, async: false
-
-  test "certification" do
-    # This will verify the first certification, as well as renewals.
-    SiteEncrypt.Phoenix.Test.verify_certification(PhoenixDemo.Endpoint)
-  end
+  use SiteEncrypt.Phoenix.Test, endpoint: PhoenixDemo.Endpoint
 end
 
 ```

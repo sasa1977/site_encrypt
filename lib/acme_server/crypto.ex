@@ -33,7 +33,7 @@ defmodule AcmeServer.Crypto do
   end
 
   defp ca_key_and_cert() do
-    ca_key = PrivateKey.new_rsa(4096)
+    ca_key = PrivateKey.new_rsa(1024)
     ca_cert = Certificate.self_signed(ca_key, "/O=Site Encrypt/CN=Acme Server CA", template: :ca)
     {ca_key, ca_cert}
   end

@@ -1,59 +1,61 @@
 defmodule SiteEncrypt.Phoenix.Test do
-  import ExUnit.Assertions
   require X509.ASN1
   alias SiteEncrypt.Registry
+  import ExUnit.Assertions
 
-  @spec verify_certification(SiteEncrypt.id()) :: :ok
-  def verify_certification(id) do
-    Registry.subscribe(id)
-    config = Registry.config(id)
+  defmacro __using__(opts) do
+    quote bind_quoted: [endpoint: Keyword.fetch!(opts, :endpoint)] do
+      use ExUnit.Case, async: false
 
-    # stop the site, remove cert folders, and restart the site
-    root_pid = Registry.whereis(id, :root)
-    Supervisor.terminate_child(root_pid, :site)
+      setup do
+        endpoint = unquote(endpoint)
 
-    ~w/db_folder backup/a
-    |> Stream.map(&Map.fetch!(config, &1))
-    |> Stream.reject(&is_nil/1)
-    |> Enum.each(&File.rm_rf/1)
+        SiteEncrypt.Phoenix.restart_site(endpoint, fn ->
+          ~w/db_folder backup/a
+          |> Stream.map(&Map.fetch!(endpoint.certification(), &1))
+          |> Stream.reject(&is_nil/1)
+          |> Enum.each(&File.rm_rf/1)
 
-    Supervisor.restart_child(root_pid, :site)
+          app = Mix.Project.config() |> Keyword.fetch!(:app)
+          endpoint_config = Application.get_env(app, endpoint, [])
+          Application.put_env(app, endpoint, Keyword.put(endpoint_config, :server, true))
+          on_exit(fn -> Application.put_env(app, endpoint, endpoint_config) end)
+        end)
 
-    cert = await_first_cert(id)
+        self_signed_cert = SiteEncrypt.Phoenix.Test.get_cert(endpoint)
 
-    domains =
-      cert
-      |> X509.Certificate.extension(:subject_alt_name)
-      |> X509.ASN1.extension(:extnValue)
-      |> Keyword.values()
-      |> Enum.map(&to_string/1)
+        utc_now = DateTime.utc_now()
+        midnight = %DateTime{utc_now | hour: 0, minute: 0, second: 0}
+        assert SiteEncrypt.Certifier.tick(endpoint, midnight) == :ok
+        new_cert = SiteEncrypt.Phoenix.Test.get_cert(endpoint)
+        refute new_cert == self_signed_cert
 
-    assert domains == config.domains
+        :ok
+      end
+
+      test "certification" do
+        require X509.ASN1
+
+        cert = SiteEncrypt.Phoenix.Test.get_cert(unquote(endpoint))
+
+        domains =
+          cert
+          |> X509.Certificate.extension(:subject_alt_name)
+          |> X509.ASN1.extension(:extnValue)
+          |> Keyword.values()
+          |> Enum.map(&to_string/1)
+
+        assert domains == Registry.config(unquote(endpoint)).domains
+      end
+    end
   end
 
-  def await_first_cert(id) do
-    assert_receive {:site_encrypt_notification, ^id, {:renew_started, pid}}, :timer.seconds(1)
-    mref = Process.monitor(pid)
-    assert_receive {:DOWN, ^mref, :process, ^pid, _reason}, :timer.seconds(10)
-    get_cert(id)
-  end
-
-  def get_cert(id) do
-    {:ok, socket} = :ssl.connect('localhost', https_port(id), [], :timer.seconds(5))
+  @spec get_cert(module) :: X509.Certificate.t()
+  def get_cert(endpoint) do
+    {:ok, socket} = :ssl.connect('localhost', https_port(endpoint), [], :timer.seconds(5))
     {:ok, der_cert} = :ssl.peercert(socket)
     :ssl.close(socket)
     X509.Certificate.from_der!(der_cert)
-  end
-
-  def capture_log(fun) do
-    level = Logger.level()
-
-    try do
-      Logger.configure(level: :debug)
-      ExUnit.CaptureLog.capture_log(fun)
-    after
-      Logger.configure(level: level)
-    end
   end
 
   defp https_port(endpoint), do: Keyword.fetch!(endpoint.config(:https), :port)

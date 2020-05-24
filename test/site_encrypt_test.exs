@@ -1,27 +1,18 @@
 for certifier <- [Native, Certbot],
     certifier != Certbot or System.get_env("CI") == "true" do
   defmodule Module.concat(SiteEncrypt, "#{certifier}Test") do
-    use ExUnit.Case, async: false
+    use SiteEncrypt.Phoenix.Test, endpoint: __MODULE__.TestEndpoint
     alias __MODULE__.TestEndpoint
     import SiteEncrypt.Phoenix.Test
 
-    setup do
-      config = TestEndpoint.certification()
-      File.rm_rf(config.db_folder)
-      File.rm_rf(config.backup)
+    setup_all do
+      start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
       :ok
     end
 
-    test "certification" do
-      start_site()
-      verify_certification(TestEndpoint)
-    end
-
-    test "renewal" do
-      SiteEncrypt.Registry.subscribe(TestEndpoint)
-      config = start_site()
-      first_cert = await_first_cert(TestEndpoint)
-
+    test "automatic renewal" do
+      config = SiteEncrypt.Registry.config(TestEndpoint)
+      first_cert = get_cert(TestEndpoint)
       cert_valid_until = cert_valid_until(first_cert)
 
       no_renew_on =
@@ -36,32 +27,21 @@ for certifier <- [Native, Certbot],
     end
 
     test "force_renew" do
-      SiteEncrypt.Registry.subscribe(TestEndpoint)
-      start_site()
-      first_cert = await_first_cert(TestEndpoint)
-
+      first_cert = get_cert(TestEndpoint)
       assert SiteEncrypt.Certifier.force_renew(TestEndpoint) == :finished
       assert get_cert(TestEndpoint) != first_cert
     end
 
     test "backup and restore" do
-      SiteEncrypt.Registry.subscribe(TestEndpoint)
-      config = start_site()
-
-      first_cert = await_first_cert(TestEndpoint)
+      config = SiteEncrypt.Registry.config(TestEndpoint)
+      first_cert = get_cert(TestEndpoint)
       assert File.exists?(config.backup)
 
-      # stop the site and remove all cert folders
-      stop_supervised!(SiteEncrypt.Phoenix)
-
-      File.rm_rf!(config.db_folder)
-      :ssl.clear_pem_cache()
-
-      # restart the site
-      start_site()
-
-      # check that first certification didn't start
-      refute_receive {:site_encrypt_notification, TestEndpoint, {:renew_started, _}}
+      # remove db folder and restart the site
+      SiteEncrypt.Phoenix.restart_site(TestEndpoint, fn ->
+        File.rm_rf!(config.db_folder)
+        :ssl.clear_pem_cache()
+      end)
 
       # make sure the cert is restored
       assert get_cert(TestEndpoint) == first_cert
@@ -87,15 +67,6 @@ for certifier <- [Native, Certbot],
 
     defp midnight(datetime), do: %DateTime{datetime | hour: 0, minute: 0, second: 0}
 
-    defp start_site do
-      start_supervised!(
-        {SiteEncrypt.Phoenix, TestEndpoint},
-        restart: :permanent
-      )
-
-      SiteEncrypt.Registry.config(TestEndpoint)
-    end
-
     defmodule TestEndpoint do
       @moduledoc false
 
@@ -109,8 +80,7 @@ for certifier <- [Native, Certbot],
          |> SiteEncrypt.Phoenix.configure_https(port: 4001)
          |> Keyword.merge(
            url: [scheme: "https", host: "localhost", port: 4001],
-           http: [port: 5002],
-           server: true
+           http: [port: 4000]
          )}
       end
 

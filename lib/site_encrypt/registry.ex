@@ -1,21 +1,6 @@
 defmodule SiteEncrypt.Registry do
-  def start_link do
-    Supervisor.start_link(
-      [
-        {Registry, keys: :unique, name: __MODULE__},
-        {Registry, keys: :duplicate, name: __MODULE__.PubSub}
-      ],
-      strategy: :one_for_one
-    )
-  end
-
-  def child_spec(_) do
-    %{
-      id: __MODULE__,
-      type: :supervisor,
-      start: {__MODULE__, :start_link, []}
-    }
-  end
+  def child_spec(_),
+    do: Supervisor.child_spec({Registry, keys: :unique, name: __MODULE__}, id: __MODULE__)
 
   @spec config(SiteEncrypt.id()) :: SiteEncrypt.config()
   def config(id) do
@@ -44,13 +29,4 @@ defmodule SiteEncrypt.Registry do
   def name(id, role), do: {:via, Registry, {__MODULE__, {id, role}}}
 
   def whereis(id, role), do: GenServer.whereis(name(id, role))
-
-  def subscribe(id), do: Registry.register(__MODULE__.PubSub, id, nil)
-
-  def publish(id, message) do
-    Enum.each(
-      Registry.lookup(__MODULE__.PubSub, id),
-      fn {pid, _value} -> send(pid, {:site_encrypt_notification, id, message}) end
-    )
-  end
 end

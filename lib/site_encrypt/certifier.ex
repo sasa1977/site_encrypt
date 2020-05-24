@@ -7,7 +7,9 @@ defmodule SiteEncrypt.Certifier do
              [job_parent_spec(config), periodic_scheduler_spec(config)],
              strategy: :one_for_one
            ) do
-      if config.certifier.pems(config) == :error, do: start_renew(config)
+      if config.mode == :auto and config.certifier.pems(config) == :error,
+        do: start_renew(config)
+
       {:ok, pid}
     end
   end
@@ -87,14 +89,10 @@ defmodule SiteEncrypt.Certifier do
   end
 
   defp start_renew(config) do
-    with {:ok, pid} <-
-           DynamicSupervisor.start_child(
-             Registry.name(config.id, __MODULE__.JobParent),
-             Supervisor.child_spec({SiteEncrypt.Certifier.Job, config}, restart: :temporary)
-           ) do
-      Registry.publish(config.id, {:renew_started, pid})
-      {:ok, pid}
-    end
+    DynamicSupervisor.start_child(
+      Registry.name(config.id, __MODULE__.JobParent),
+      Supervisor.child_spec({SiteEncrypt.Certifier.Job, config}, restart: :temporary)
+    )
   end
 
   @doc false

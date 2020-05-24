@@ -16,8 +16,7 @@ defmodule PhoenixDemo.Endpoint do
      |> SiteEncrypt.Phoenix.configure_https(port: 4001)
      |> Keyword.merge(
        url: [scheme: "https", host: "localhost", port: 4001],
-       http: [port: 4000],
-       server: true
+       http: [port: 4000]
      )}
   end
 
