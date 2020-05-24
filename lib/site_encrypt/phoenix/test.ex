@@ -24,9 +24,9 @@ defmodule SiteEncrypt.Phoenix.Test do
 
         self_signed_cert = SiteEncrypt.Phoenix.Test.get_cert(endpoint)
 
-        utc_now = DateTime.utc_now()
-        midnight = %DateTime{utc_now | hour: 0, minute: 0, second: 0}
-        assert SiteEncrypt.Certifier.tick(endpoint, midnight) == :ok
+        utc_now = NaiveDateTime.utc_now()
+        midnight = %NaiveDateTime{utc_now | hour: 0, minute: 0, second: 0}
+        assert SiteEncrypt.Certifier.PeriodicRefresh.tick(endpoint, midnight) == :ok
         new_cert = SiteEncrypt.Phoenix.Test.get_cert(endpoint)
         refute new_cert == self_signed_cert
 

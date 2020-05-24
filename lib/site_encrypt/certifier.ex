@@ -4,7 +4,7 @@ defmodule SiteEncrypt.Certifier do
   def start_link(config) do
     with {:ok, pid} <-
            Supervisor.start_link(
-             [job_parent_spec(config), periodic_scheduler_spec(config)],
+             [job_parent_spec(config), {SiteEncrypt.Certifier.PeriodicRefresh, config}],
              strategy: :one_for_one
            ) do
       if config.mode == :auto and config.certifier.pems(config) == :error,
@@ -43,37 +43,6 @@ defmodule SiteEncrypt.Certifier do
     }
   end
 
-  defp periodic_scheduler_spec(config) do
-    Periodic.child_spec(
-      id: __MODULE__.Scheduler,
-      run: fn -> run_renew(config) end,
-      every: :timer.seconds(1),
-      when: fn -> time_to_renew?(config) end,
-      on_overlap: :ignore,
-      mode: config.mode,
-      name: Registry.name(config.id, __MODULE__.Scheduler)
-    )
-  end
-
-  defp time_to_renew?(config) do
-    now = utc_now(config.id)
-    midnight? = now.hour == 0 and now.minute == 0 and now.second == 0
-
-    case {midnight?, config.certifier.pems(config)} do
-      {false, _} ->
-        false
-
-      {true, :error} ->
-        true
-
-      {true, {:ok, pems}} ->
-        cert_valid_until = pems |> Keyword.fetch!(:cert) |> cert_valid_until()
-        DateTime.diff(cert_valid_until, now) < config.renew_before_expires_in_days * 24 * 60 * 60
-    end
-  end
-
-  defp utc_now(id), do: :persistent_term.get({__MODULE__, id}, DateTime.utc_now())
-
   defp run_renew(config) do
     case start_renew(config) do
       {:ok, pid} ->
@@ -95,19 +64,6 @@ defmodule SiteEncrypt.Certifier do
     )
   end
 
-  @doc false
-  def tick(id, datetime) do
-    :persistent_term.put({__MODULE__, id}, datetime)
-
-    case Periodic.Test.sync_tick(Registry.name(id, __MODULE__.Scheduler), :infinity) do
-      {:ok, :normal} -> :ok
-      {:ok, abnormal} -> {:error, abnormal}
-      error -> error
-    end
-  after
-    :persistent_term.erase({{__MODULE__, id}, datetime})
-  end
-
   @spec child_spec(SiteEncrypt.config()) :: Supervisor.child_spec()
   def child_spec(config) do
     %{
@@ -115,14 +71,5 @@ defmodule SiteEncrypt.Certifier do
       start: {__MODULE__, :start_link, [config]},
       type: :supervisor
     }
-  end
-
-  defp cert_valid_until(pem) do
-    {:Validity, _from, to} =
-      pem
-      |> X509.Certificate.from_pem!()
-      |> X509.Certificate.validity()
-
-    X509.DateTime.to_datetime(to)
   end
 end

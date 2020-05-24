@@ -1,4 +1,4 @@
-defmodule SiteEncrypt.Certbot do
+defmodule SiteEncrypt.Certifier.Certbot do
   @behaviour SiteEncrypt.Certifier.Job
   require Logger
 

@@ -3,6 +3,7 @@ for certifier <- [Native, Certbot],
   defmodule Module.concat(SiteEncrypt, "#{certifier}Test") do
     use SiteEncrypt.Phoenix.Test, endpoint: __MODULE__.TestEndpoint
     alias __MODULE__.TestEndpoint
+    alias SiteEncrypt.Certifier.PeriodicRefresh
     import SiteEncrypt.Phoenix.Test
 
     setup_all do
@@ -13,16 +14,18 @@ for certifier <- [Native, Certbot],
     test "automatic renewal" do
       config = SiteEncrypt.Registry.config(TestEndpoint)
       first_cert = get_cert(TestEndpoint)
-      cert_valid_until = cert_valid_until(first_cert)
 
-      no_renew_on =
-        midnight(add_days(cert_valid_until, -(config.renew_before_expires_in_days + 2)))
+      assert Date.diff(
+               PeriodicRefresh.cert_valid_until(config),
+               PeriodicRefresh.renewal_date(config)
+             ) == config.renew_before_expires_in_days
 
-      assert SiteEncrypt.Certifier.tick(TestEndpoint, no_renew_on) == {:error, :job_not_started}
+      no_renew_on = midnight(PeriodicRefresh.renewal_date(config))
+      assert PeriodicRefresh.tick(TestEndpoint, no_renew_on) == {:error, :job_not_started}
       assert get_cert(TestEndpoint) == first_cert
 
-      renew_on = midnight(add_days(cert_valid_until, -(config.renew_before_expires_in_days - 2)))
-      assert SiteEncrypt.Certifier.tick(TestEndpoint, renew_on) == :ok
+      renew_on = midnight(add_days(no_renew_on, 1))
+      assert PeriodicRefresh.tick(TestEndpoint, renew_on) == :ok
       assert get_cert(TestEndpoint) != first_cert
     end
 
@@ -51,21 +54,16 @@ for certifier <- [Native, Certbot],
       refute get_cert(TestEndpoint) == first_cert
     end
 
-    defp cert_valid_until(cert) do
-      {:Validity, _from, to} = X509.Certificate.validity(cert)
-      X509.DateTime.to_datetime(to)
-    end
-
     defp add_days(datetime, days) do
-      date =
-        datetime
-        |> DateTime.to_date()
-        |> Date.add(days)
-
-      Map.merge(datetime, Map.take(date, ~w/year month day/a))
+      date = Date.add(datetime, days)
+      {:ok, datetime} = NaiveDateTime.new(date, NaiveDateTime.to_time(datetime))
+      datetime
     end
 
-    defp midnight(datetime), do: %DateTime{datetime | hour: 0, minute: 0, second: 0}
+    defp midnight(datetime) do
+      {:ok, datetime} = NaiveDateTime.new(NaiveDateTime.to_date(datetime), ~T[00:00:00])
+      datetime
+    end
 
     defmodule TestEndpoint do
       @moduledoc false
@@ -92,7 +90,7 @@ for certifier <- [Native, Certbot],
           emails: ["admin@foo.bar"],
           db_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("db"),
           backup: Path.join(System.tmp_dir!(), "site_encrypt_backup.tgz"),
-          certifier: unquote(Module.concat(SiteEncrypt, certifier))
+          certifier: unquote(Module.concat(SiteEncrypt.Certifier, certifier))
         )
       end
 

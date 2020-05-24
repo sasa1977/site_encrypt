@@ -24,7 +24,7 @@ defmodule PhoenixDemo.Endpoint do
   def certification do
     common_settings = [
       db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("db"),
-      certifier: SiteEncrypt.Native
+      certifier: SiteEncrypt.Certifier.Native
     ]
 
     target_machine_settings =

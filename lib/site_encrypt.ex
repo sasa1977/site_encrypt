@@ -10,7 +10,7 @@ defmodule SiteEncrypt do
           renew_before_expires_in_days: pos_integer(),
           log_level: log_level,
           mode: :auto | :manual,
-          certifier: SiteEncrypt.Native | SiteEncrypt.Certbot,
+          certifier: SiteEncrypt.Certifier.Native | SiteEncrypt.Certifier.Certbot,
           backup: String.t() | nil,
           callback: module
         }
@@ -63,7 +63,7 @@ defmodule SiteEncrypt do
       log_level: :info,
       mode: if(mix_env == :test, do: :manual, else: :auto),
       backup: nil,
-      certifier: SiteEncrypt.Certbot,
+      certifier: SiteEncrypt.Certifier.Certbot,
       callback: callback
     }
   end
