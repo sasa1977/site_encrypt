@@ -2,15 +2,15 @@ defmodule AcmeClient do
   alias AcmeClient.API
   alias AcmeClient.Crypto
 
-  def new_account(http_pool, ca_url, contacts) do
+  def new_account(http_pool, directory_url, contacts) do
     account_key = JOSE.JWK.generate_key({:rsa, 2048})
-    session = start_session(http_pool, ca_url, account_key)
+    session = start_session(http_pool, directory_url, account_key)
     {:ok, session} = API.new_account(session, contacts)
     session
   end
 
-  def for_existing_account(http_pool, ca_url, account_key) do
-    session = start_session(http_pool, ca_url, account_key)
+  def for_existing_account(http_pool, directory_url, account_key) do
+    session = start_session(http_pool, directory_url, account_key)
     {:ok, session} = API.fetch_kid(session)
     session
   end
@@ -22,8 +22,8 @@ defmodule AcmeClient do
     {%{privkey: Crypto.private_key_to_pem(private_key), cert: cert, chain: chain}, session}
   end
 
-  defp start_session(http_pool, ca_url, account_key) do
-    {:ok, session} = API.new_session(http_pool, ca_url, account_key)
+  defp start_session(http_pool, directory_url, account_key) do
+    {:ok, session} = API.new_session(http_pool, directory_url, account_key)
     {:ok, session} = API.new_nonce(session)
     session
   end

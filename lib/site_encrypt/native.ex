@@ -25,15 +25,15 @@ defmodule SiteEncrypt.Native do
 
   defp new_account(config, http_pool) do
     Logger.log(:info, "Creating new ACME account for domain #{hd(config.domains)}")
-    ca_url = ca_url(config)
-    session = AcmeClient.new_account(http_pool, ca_url, [config.emails])
+    directory_url = directory_url(config)
+    session = AcmeClient.new_account(http_pool, directory_url, [config.emails])
     store_account_key!(config, session.account_key)
     create_certificate(config, session)
   end
 
   defp new_cert(config, http_pool, account_key) do
-    ca_url = ca_url(config)
-    session = AcmeClient.for_existing_account(http_pool, ca_url, account_key)
+    directory_url = directory_url(config)
+    session = AcmeClient.for_existing_account(http_pool, directory_url, account_key)
     create_certificate(config, session)
   end
 
@@ -97,10 +97,10 @@ defmodule SiteEncrypt.Native do
     ])
   end
 
-  defp ca_folder(config), do: URI.parse(ca_url(config)).host
+  defp ca_folder(config), do: URI.parse(directory_url(config)).host
 
-  defp ca_url(config) do
-    with {:local_acme_server, opts} <- config.ca_url,
+  defp directory_url(config) do
+    with {:internal, opts} <- config.directory_url,
          do: "https://localhost:#{Keyword.fetch!(opts, :port)}/directory"
   end
 end

@@ -60,7 +60,7 @@ defmodule PhoenixDemo.Endpoint do
   @impl SiteEncrypt
   def certification do
     SiteEncrypt.configure(
-      ca_url: {:local_acme_server, port: 4002},
+      directory_url: {:internal, port: 4002},
       domains: ["localhost"],
       emails: ["admin@foo.bar"],
       db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("db"),
@@ -150,7 +150,7 @@ You need to change some parameters in `certification/1` callback.
 ```elixir
 def certification() do
   [
-    ca_url: "https://acme-v02.api.letsencrypt.org/directory",
+    directory_url: "https://acme-v02.api.letsencrypt.org/directory",
     domains: ["<DOMAIN NAME>"],
     emails: ["<ADMIN EMAIL>"]
     # other parameters can remain the same

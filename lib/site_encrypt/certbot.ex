@@ -91,7 +91,7 @@ defmodule SiteEncrypt.Certbot do
   defp common_args(config, opts) do
     ~w(
       -m #{Enum.join(config.emails, " ")}
-      --server #{ca_url(config.ca_url)}
+      --server #{directory_url(config.directory_url)}
       --work-dir #{work_folder(config)}
       --config-dir #{config_folder(config)}
       --logs-dir #{log_folder(config)}
@@ -101,10 +101,10 @@ defmodule SiteEncrypt.Certbot do
     )
   end
 
-  defp ca_url({:local_acme_server, opts}),
+  defp directory_url({:internal, opts}),
     do: "https://localhost:#{Keyword.fetch!(opts, :port)}/directory"
 
-  defp ca_url(ca_url), do: ca_url
+  defp directory_url(directory_url), do: directory_url
 
   defp domain_params(config), do: Enum.map(config.domains, &"-d #{&1}")
 

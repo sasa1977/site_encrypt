@@ -87,7 +87,7 @@ for certifier <- [Native, Certbot],
       @impl SiteEncrypt
       def certification do
         SiteEncrypt.configure(
-          ca_url: local_acme_server(),
+          directory_url: internal(),
           domains: ["localhost", "foo.localhost"],
           emails: ["admin@foo.bar"],
           db_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("db"),
@@ -96,7 +96,7 @@ for certifier <- [Native, Certbot],
         )
       end
 
-      defp local_acme_server, do: {:local_acme_server, port: 4003}
+      defp internal, do: {:internal, port: 4003}
     end
   end
 end

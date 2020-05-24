@@ -96,9 +96,9 @@ defmodule SiteEncrypt.Phoenix do
     end
   end
 
-  defp acme_server_spec(%{ca_url: url}, _endpoint) when is_binary(url), do: nil
+  defp acme_server_spec(%{directory_url: url}, _endpoint) when is_binary(url), do: nil
 
-  defp acme_server_spec(%{ca_url: {:local_acme_server, acme_server_config}} = config, endpoint) do
+  defp acme_server_spec(%{directory_url: {:internal, acme_server_config}} = config, endpoint) do
     port = Keyword.fetch!(acme_server_config, :port)
     SiteEncrypt.Logger.log(config.log_level, "Running local ACME server at port #{port}")
 

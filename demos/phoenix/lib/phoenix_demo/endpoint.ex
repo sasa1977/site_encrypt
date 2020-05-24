@@ -31,21 +31,21 @@ defmodule PhoenixDemo.Endpoint do
       case System.get_env("MODE", "local") do
         "local" ->
           [
-            ca_url: {:local_acme_server, port: 4002},
+            directory_url: {:internal, port: 4002},
             domains: ["localhost"],
             emails: ["admin@foo.bar"]
           ]
 
         "staging" ->
           [
-            ca_url: "https://acme-staging-v02.api.letsencrypt.org/directory",
+            directory_url: "https://acme-staging-v02.api.letsencrypt.org/directory",
             domains: ["staging.host", "www.staging.host"],
             emails: ["admin@email.address"]
           ]
 
         "production" ->
           [
-            ca_url: "https://acme-v02.api.letsencrypt.org/directory",
+            directory_url: "https://acme-v02.api.letsencrypt.org/directory",
             domains: ["production.host", "www.production.host"],
             emails: ["admin@email.address"]
           ]

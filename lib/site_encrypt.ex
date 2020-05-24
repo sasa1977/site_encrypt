@@ -3,7 +3,7 @@ defmodule SiteEncrypt do
 
   @type config :: %{
           id: id,
-          ca_url: ca_url,
+          directory_url: directory_url,
           domains: nonempty_list(String.t()),
           emails: nonempty_list(String.t()),
           db_folder: String.t(),
@@ -16,7 +16,7 @@ defmodule SiteEncrypt do
         }
 
   @type id :: any
-  @type ca_url :: String.t() | {:local_acme_server, [port: pos_integer]}
+  @type directory_url :: String.t() | {:internal, [port: pos_integer]}
   @type log_level :: Logger.level()
 
   @callback certification() :: config()
