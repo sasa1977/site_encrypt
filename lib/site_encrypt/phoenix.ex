@@ -1,6 +1,17 @@
 defmodule SiteEncrypt.Phoenix do
   use Supervisor
 
+  defmacro configure_https(config, https_opts \\ []) do
+    quote bind_quoted: [config: config, https_opts: https_opts] do
+      https_config =
+        (Keyword.get(config, :https) || [])
+        |> Config.Reader.merge(https_opts)
+        |> Config.Reader.merge(SiteEncrypt.https_keys(__MODULE__))
+
+      Keyword.put(config, :https, https_config)
+    end
+  end
+
   @doc false
   defmacro __using__(_opts) do
     quote do
@@ -9,6 +20,7 @@ defmodule SiteEncrypt.Phoenix do
 
       @behaviour SiteEncrypt
       require SiteEncrypt
+      require SiteEncrypt.Phoenix
 
       plug SiteEncrypt.AcmeChallenge, __MODULE__
 

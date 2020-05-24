@@ -105,10 +105,11 @@ for certifier <- [Native, Certbot],
       @impl Phoenix.Endpoint
       def init(_key, config) do
         {:ok,
-         Keyword.merge(config,
+         config
+         |> SiteEncrypt.Phoenix.configure_https(port: 4001)
+         |> Keyword.merge(
            url: [scheme: "https", host: "localhost", port: 4001],
            http: [port: 5002],
-           https: [port: 4001] ++ SiteEncrypt.https_keys(__MODULE__),
            server: true
          )}
       end

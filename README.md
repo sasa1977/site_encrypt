@@ -79,7 +79,11 @@ defmodule PhoenixDemo.Endpoint do
 
   @impl Phoenix.Endpoint
   def init(_key, config) do
-    {:ok, Keyword.merge(config, https: [port: 4001] ++ SiteEncrypt.https_keys(__MODULE__))}
+    # this will merge key, cert, and chain into `:https` key as configured in config.exs
+    {:ok, SiteEncrypt.Phoenix.configure_https(config)}
+
+    # to completely configure https from `init/2`, invoke:
+    #   SiteEncrypt.Phoenix.configure_https(config, port: 4001, ...)
   end
 
   # ...
