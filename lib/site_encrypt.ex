@@ -72,6 +72,7 @@ defmodule SiteEncrypt do
   def initialize_certs(config) do
     SiteEncrypt.Certifier.restore(config)
     File.mkdir_p!(cert_folder(config))
+    File.chmod!(config.db_folder, 0o700)
 
     case config.certifier.pems(config) do
       {:ok, keys} -> store_pems(config, keys)

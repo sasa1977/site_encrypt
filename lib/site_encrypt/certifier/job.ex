@@ -73,6 +73,7 @@ defmodule SiteEncrypt.Certifier.Job do
     end)
 
     :ok = :erl_tar.close(tar)
+    File.chmod!(config.backup, 0o600)
   catch
     type, error ->
       Logger.error(
