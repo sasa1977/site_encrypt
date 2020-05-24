@@ -56,13 +56,35 @@ defmodule SiteEncrypt.Phoenix do
 
     Supervisor.init(
       [
-        acme_server_spec(config, endpoint),
         Supervisor.child_spec(endpoint, id: :endpoint),
-        {SiteEncrypt.Certifier, config}
-      ]
-      |> Enum.reject(&is_nil/1),
-      strategy: :rest_for_one
+        %{
+          id: :certification,
+          start: {__MODULE__, :start_certification, [config, endpoint]},
+          type: :supervisor
+        }
+      ],
+      strategy: :one_for_one
     )
+  end
+
+  @doc false
+  def start_certification(config, endpoint) do
+    server? =
+      with nil <- endpoint.config(:server),
+           do: Application.get_env(:phoenix, :serve_endpoints, false)
+
+    if server? do
+      Supervisor.start_link(
+        [
+          acme_server_spec(config, endpoint),
+          {SiteEncrypt.Certifier, config}
+        ]
+        |> Enum.reject(&is_nil/1),
+        strategy: :one_for_one
+      )
+    else
+      :ignore
+    end
   end
 
   defp acme_server_spec(%{ca_url: url}, _endpoint) when is_binary(url), do: nil
