@@ -46,38 +46,30 @@ end
 
 Don't forget to invoke `mix.deps` after that.
 
-Next, extend your endpoint to implement `SiteEncrypt` behaviour:
+Next, adapt your endpoint
 
 ```elixir
 defmodule PhoenixDemo.Endpoint do
   # ...
 
-  @behaviour SiteEncrypt
+  # add this after `use Phoenix.Endpoint`
+  use SiteEncrypt.Phoenix
 
   # ...
 
   @impl SiteEncrypt
   def certification do
-    [
+    SiteEncrypt.configure(
       ca_url: {:local_acme_server, port: 4002},
       domains: ["localhost"],
       emails: ["admin@foo.bar"],
       db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("db"),
-      mode: unquote(if Mix.env() == :test, do: :manual, else: :auto)
-    ]
-  end
-
-  @impl SiteEncrypt
-  def handle_new_cert do
-    # Invoked after certificate has been obtained.
-    :ok
+    )
   end
 
   # ...
 end
 ```
-
-Include `plug SiteEncrypt.AcmeChallenge, __MODULE__` in your endpoint. If you have `plug Plug.SSL` specified, it has to be provided after `SiteEncrypt.AcmeChallenge`.
 
 Configure https:
 
@@ -144,10 +136,7 @@ defmodule PhoenixDemo.EndpointTest do
 
   test "certification" do
     # This will verify the first certification, as well as renewals.
-    SiteEncrypt.Phoenix.Test.verify_certification(PhoenixDemo.Endpoint, [
-      ~U[2020-01-01 00:00:00Z],
-      ~U[2020-02-01 00:00:00Z]
-    ])
+    SiteEncrypt.Phoenix.Test.verify_certification(PhoenixDemo.Endpoint)
   end
 end
 

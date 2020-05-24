@@ -12,7 +12,11 @@ defmodule SiteEncrypt.Phoenix.Test do
     root_pid = Registry.whereis(id, :root)
     Supervisor.terminate_child(root_pid, :site)
 
-    Enum.each(~w/db_folder backup/a, &File.rm_rf(Map.fetch!(config, &1)))
+    ~w/db_folder backup/a
+    |> Stream.map(&Map.fetch!(config, &1))
+    |> Stream.reject(&is_nil/1)
+    |> Enum.each(&File.rm_rf/1)
+
     Supervisor.restart_child(root_pid, :site)
 
     cert = await_first_cert(id)

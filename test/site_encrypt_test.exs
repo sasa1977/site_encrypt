@@ -7,8 +7,8 @@ for certifier <- [Native, Certbot],
 
     setup do
       config = TestEndpoint.certification()
-      File.rm_rf(Keyword.fetch!(config, :db_folder))
-      File.rm_rf(Keyword.fetch!(config, :backup))
+      File.rm_rf(config.db_folder)
+      File.rm_rf(config.backup)
       :ok
     end
 
@@ -100,9 +100,7 @@ for certifier <- [Native, Certbot],
       @moduledoc false
 
       use Phoenix.Endpoint, otp_app: :site_encrypt
-      @behaviour SiteEncrypt
-
-      plug SiteEncrypt.AcmeChallenge, __MODULE__
+      use SiteEncrypt.Phoenix
 
       @impl Phoenix.Endpoint
       def init(_key, config) do
@@ -117,20 +115,14 @@ for certifier <- [Native, Certbot],
 
       @impl SiteEncrypt
       def certification do
-        [
+        SiteEncrypt.configure(
           ca_url: local_acme_server(),
           domains: ["localhost", "foo.localhost"],
           emails: ["admin@foo.bar"],
           db_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("db"),
           backup: Path.join(System.tmp_dir!(), "site_encrypt_backup.tgz"),
-          mode: :manual,
           certifier: unquote(Module.concat(SiteEncrypt, certifier))
-        ]
-      end
-
-      @impl SiteEncrypt
-      def handle_new_cert do
-        :ok
+        )
       end
 
       defp local_acme_server, do: {:local_acme_server, port: 4003}

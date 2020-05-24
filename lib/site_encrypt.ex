@@ -1,33 +1,25 @@
 defmodule SiteEncrypt do
   require Logger
 
-  config_type = [
-    id: quote(do: id),
-    ca_url: quote(do: ca_url),
-    domains: quote(do: nonempty_list(String.t())),
-    emails: quote(do: nonempty_list(String.t())),
-    db_folder: quote(do: String.t()),
-    renew_before_expires_in_days: quote(do: pos_integer()),
-    log_level: quote(do: log_level),
-    mode: quote(do: :auto | :manual),
-    callback: quote(do: __MODULE__),
-    backup: quote(do: String.t()),
-    certifier: quote(do: SiteEncrypt.Native | SiteEncrypt.Certbot)
-  ]
-
-  @typedoc false
   @type config :: %{
-          unquote_splicing(Keyword.drop(config_type, ~w/backup/a)),
-          backup: String.t() | nil
+          id: id,
+          ca_url: ca_url,
+          domains: nonempty_list(String.t()),
+          emails: nonempty_list(String.t()),
+          db_folder: String.t(),
+          renew_before_expires_in_days: pos_integer(),
+          log_level: log_level,
+          mode: :auto | :manual,
+          certifier: SiteEncrypt.Native | SiteEncrypt.Certbot,
+          backup: String.t() | nil,
+          callback: module
         }
-
-  @type certification :: unquote(Keyword.drop(config_type, ~w/callback/a))
 
   @type id :: any
   @type ca_url :: String.t() | {:local_acme_server, [port: pos_integer]}
   @type log_level :: Logger.level()
 
-  @callback certification() :: certification()
+  @callback certification() :: config()
   @callback handle_new_cert() :: any
 
   @spec https_keys(id) :: [keyfile: Path.t(), certfile: Path.t(), cacertfile: Path.t()]
@@ -41,14 +33,16 @@ defmodule SiteEncrypt do
     ]
   end
 
+  defmacro configure(opts) do
+    quote do
+      unquote(__MODULE__).normalized_config(unquote(opts), __MODULE__, unquote(Mix.env()))
+    end
+  end
+
   @doc false
-  @spec normalized_config(module, certification) :: config
-  def normalized_config(callback, adapter_defaults \\ []) do
-    config =
-      defaults()
-      |> Map.merge(Map.new(adapter_defaults))
-      |> Map.merge(Map.new(callback.certification()))
-      |> Map.put(:callback, callback)
+  @spec normalized_config(Keyword.t(), module, :dev | :test | :prod) :: config
+  def normalized_config(opts, callback, mix_env) do
+    config = Map.merge(defaults(callback, mix_env), Map.new(opts))
 
     if Enum.empty?(config.domains),
       do: raise("You need to provide at least one domain in `:domains` option")
@@ -59,14 +53,16 @@ defmodule SiteEncrypt do
     config
   end
 
-  defp defaults do
+  defp defaults(callback, mix_env) do
     %{
+      id: callback,
       renew_before_expires_in_days: 30,
       domains: [],
       log_level: :info,
-      mode: :auto,
+      mode: if(mix_env == :test, do: :manual, else: :auto),
       backup: nil,
-      certifier: SiteEncrypt.Certbot
+      certifier: SiteEncrypt.Certbot,
+      callback: callback
     }
   end
 

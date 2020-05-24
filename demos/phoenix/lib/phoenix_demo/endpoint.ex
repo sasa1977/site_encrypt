@@ -1,6 +1,6 @@
 defmodule PhoenixDemo.Endpoint do
   use Phoenix.Endpoint, otp_app: :phoenix_demo
-  @behaviour SiteEncrypt
+  use SiteEncrypt.Phoenix
 
   plug SiteEncrypt.AcmeChallenge, __MODULE__
   plug Plug.SSL, exclude: [], host: "localhost:4001"
@@ -14,7 +14,7 @@ defmodule PhoenixDemo.Endpoint do
     {:ok,
      Keyword.merge(config,
        url: [scheme: "https", host: "localhost", port: 4001],
-       http: [port: 5002],
+       http: [port: 4000],
        https: [port: 4001] ++ SiteEncrypt.https_keys(__MODULE__),
        server: true
      )}
@@ -24,7 +24,6 @@ defmodule PhoenixDemo.Endpoint do
   def certification do
     common_settings = [
       db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("db"),
-      mode: unquote(if Mix.env() == :test, do: :manual, else: :auto),
       certifier: SiteEncrypt.Native
     ]
 
@@ -40,23 +39,18 @@ defmodule PhoenixDemo.Endpoint do
         "staging" ->
           [
             ca_url: "https://acme-staging-v02.api.letsencrypt.org/directory",
-            domains: ["staging.host.name"],
+            domains: ["staging.host", "www.staging.host"],
             emails: ["admin@email.address"]
           ]
 
         "production" ->
           [
             ca_url: "https://acme-v02.api.letsencrypt.org/directory",
-            domains: ["production.host.name"],
+            domains: ["production.host", "www.production.host"],
             emails: ["admin@email.address"]
           ]
       end
 
-    common_settings ++ target_machine_settings
-  end
-
-  @impl SiteEncrypt
-  def handle_new_cert do
-    :ok
+    SiteEncrypt.configure(common_settings ++ target_machine_settings)
   end
 end

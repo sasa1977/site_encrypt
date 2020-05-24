@@ -1,13 +1,27 @@
 defmodule SiteEncrypt.Phoenix do
   use Supervisor
 
-  def start_link({callback, opts}) do
-    endpoint = Keyword.get(opts, :endpoint, callback)
+  @doc false
+  defmacro __using__(_opts) do
+    quote do
+      unless Enum.member?(@behaviour, Phoenix.Endpoint),
+        do: raise("SiteEncrypt.Phoenix must be used after Phoenix.Endpoint")
 
-    if Keyword.has_key?(opts, :id),
-      do: raise("`:id` is not an allowed option for Phoenix adapter")
+      @behaviour SiteEncrypt
+      require SiteEncrypt
 
-    config = SiteEncrypt.normalized_config(callback, id: endpoint)
+      plug SiteEncrypt.AcmeChallenge, __MODULE__
+
+      @impl SiteEncrypt
+      def handle_new_cert, do: :ok
+
+      defoverridable handle_new_cert: 0
+    end
+  end
+
+  @doc false
+  def start_link(endpoint) do
+    config = endpoint.certification()
 
     Supervisor.start_link(
       [
@@ -21,9 +35,6 @@ defmodule SiteEncrypt.Phoenix do
       name: SiteEncrypt.Registry.name(config.id, :root)
     )
   end
-
-  @doc false
-  def start_link(callback), do: start_link({callback, []})
 
   @impl Supervisor
   def init({config, endpoint}) do
