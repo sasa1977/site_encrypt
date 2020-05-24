@@ -19,10 +19,6 @@ defmodule AcmeServer do
 
   @spec start_link(start_opts) :: Supervisor.on_start()
   def start_link(opts) do
-    # The supervision subtree of an ACME server instance. This supervisor sits
-    # in the client app tree, which supports proper shutdown. If this supervisor
-    # is stopped, all the processes associated with this ACME server instance
-    # are also terminated.
     Supervisor.start_link(
       [
         {AcmeServer.Db, Keyword.fetch!(opts, :config)},

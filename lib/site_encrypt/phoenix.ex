@@ -35,6 +35,12 @@ defmodule SiteEncrypt.Phoenix do
   def start_link(endpoint) do
     config = endpoint.certification()
 
+    # The supervision tree is one layer deeper for easier testing. We're starting the site
+    # supervisor as a single child of the root supervisor. All other processes (e.g. endpoint,
+    # certifier, internal acme server) are running under the site supervisor.
+    #
+    # This supervision structure allows us to easily stop and restart the entire site by stopping
+    # and starting the site supervisor.
     Supervisor.start_link(
       [
         %{
@@ -66,6 +72,9 @@ defmodule SiteEncrypt.Phoenix do
     Supervisor.init(
       [
         Supervisor.child_spec(endpoint, id: :endpoint),
+        # The remaining processes are started via `start_certification`. This is needed so we
+        # can get the fully shaped endpoint config, and determine if we need to start certifier
+        # processes.
         %{
           id: :certification,
           start: {__MODULE__, :start_certification, [config, endpoint]},
@@ -84,14 +93,14 @@ defmodule SiteEncrypt.Phoenix do
 
     if server? do
       Supervisor.start_link(
-        [
-          acme_server_spec(config, endpoint),
-          {SiteEncrypt.Certifier, config}
-        ]
-        |> Enum.reject(&is_nil/1),
+        Enum.reject(
+          [acme_server_spec(config, endpoint), {SiteEncrypt.Certifier, config}],
+          &is_nil/1
+        ),
         strategy: :one_for_one
       )
     else
+      # we won't start certification if the endpoint is not serving requests
       :ignore
     end
   end
@@ -103,12 +112,10 @@ defmodule SiteEncrypt.Phoenix do
     SiteEncrypt.Logger.log(config.log_level, "Running local ACME server at port #{port}")
 
     AcmeServer.Standalone.child_spec(
-      adapter: acme_server_adapter_spec(port),
+      adapter: {Plug.Cowboy, options: [port: port]},
       dns: dns(config, endpoint)
     )
   end
-
-  defp acme_server_adapter_spec(port), do: {Plug.Cowboy, options: [port: port]}
 
   defp dns(config, endpoint) do
     config.domains
