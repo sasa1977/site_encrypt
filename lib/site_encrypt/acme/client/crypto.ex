@@ -1,4 +1,4 @@
-defmodule AcmeClient.Crypto do
+defmodule SiteEncrypt.Acme.Client.Crypto do
   def new_private_key(size, opts \\ []), do: X509.PrivateKey.new_rsa(size, opts)
 
   def private_key_to_pem(private_key),

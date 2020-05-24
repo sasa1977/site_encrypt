@@ -1,4 +1,4 @@
-defmodule AcmeServer.Challenge do
+defmodule SiteEncrypt.Acme.Server.Challenge do
   @moduledoc false
 
   # This module powers a single process, which issues an http challenge to the
@@ -41,7 +41,7 @@ defmodule AcmeServer.Challenge do
 
   @impl GenServer
   def init({config, challenge_data}) do
-    {:ok, http} = Parent.GenServer.start_child(AcmeClient.Http)
+    {:ok, http} = Parent.GenServer.start_child(SiteEncrypt.Acme.Client.Http)
     state = Map.merge(challenge_data, %{parent: self(), attempts: 1, config: config, http: http})
     start_challenge(state)
     {:ok, state}
@@ -88,7 +88,7 @@ defmodule AcmeServer.Challenge do
        )
        |> Enum.all?(&(&1 == :ok)) do
       order = %{state.order | status: :ready}
-      AcmeServer.Account.update_order(state.config, state.account_id, order)
+      SiteEncrypt.Acme.Server.Account.update_order(state.config, state.account_id, order)
       send(state.parent, :challenge_succeeded)
     else
       send(state.parent, :challenge_failed)
@@ -122,9 +122,12 @@ defmodule AcmeServer.Challenge do
 
   defp http_request(http, server, token) do
     url = "http://#{server}/.well-known/acme-challenge/#{token}"
-    AcmeClient.Http.request(http, :get, url, [], "")
+    SiteEncrypt.Acme.Client.Http.request(http, :get, url, [], "")
   end
 
   defp via(config, challenge_data),
-    do: AcmeServer.Registry.via_tuple({AcmeServer.Challenge, config.site, challenge_data})
+    do:
+      SiteEncrypt.Acme.Server.Registry.via_tuple(
+        {SiteEncrypt.Acme.Server.Challenge, config.site, challenge_data}
+      )
 end

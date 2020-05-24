@@ -30,7 +30,7 @@ defmodule SiteEncrypt.Certifier.Native do
     directory_url = directory_url(config)
 
     session =
-      AcmeClient.new_account(
+      SiteEncrypt.Acme.Client.new_account(
         http_pool,
         directory_url,
         [config.emails],
@@ -43,7 +43,7 @@ defmodule SiteEncrypt.Certifier.Native do
 
   defp new_cert(config, http_pool, account_key) do
     directory_url = directory_url(config)
-    session = AcmeClient.for_existing_account(http_pool, directory_url, account_key)
+    session = SiteEncrypt.Acme.Client.for_existing_account(http_pool, directory_url, account_key)
     create_certificate(config, session)
   end
 
@@ -52,7 +52,7 @@ defmodule SiteEncrypt.Certifier.Native do
     SiteEncrypt.log(config, "Ordering a new certificate for domain #{hd(config.domains)}")
 
     {pems, _session} =
-      AcmeClient.create_certificate(session, %{
+      SiteEncrypt.Acme.Client.create_certificate(session, %{
         id: config.id,
         domains: config.domains,
         poll_delay: if(internal_ca?(config), do: 50, else: :timer.seconds(2)),

@@ -5,7 +5,7 @@ defmodule SiteEncrypt.Application do
     Supervisor.start_link(
       [
         SiteEncrypt.Registry,
-        AcmeServer.Registry
+        SiteEncrypt.Acme.Server.Registry
       ],
       strategy: :one_for_one,
       name: SiteEncrypt.Supervisor

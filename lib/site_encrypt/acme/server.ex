@@ -1,5 +1,5 @@
-defmodule AcmeServer do
-  alias AcmeServer.Account
+defmodule SiteEncrypt.Acme.Server do
+  alias SiteEncrypt.Acme.Server.Account
 
   @type site :: String.t()
   @type dns :: %{String.t() => String.t()}
@@ -21,8 +21,8 @@ defmodule AcmeServer do
   def start_link(opts) do
     Supervisor.start_link(
       [
-        {AcmeServer.Db, Keyword.fetch!(opts, :config)},
-        {AcmeServer.Challenges, Keyword.fetch!(opts, :config)},
+        {SiteEncrypt.Acme.Server.Db, Keyword.fetch!(opts, :config)},
+        {SiteEncrypt.Acme.Server.Challenges, Keyword.fetch!(opts, :config)},
         Keyword.fetch!(opts, :endpoint)
       ],
       strategy: :one_for_one
@@ -107,7 +107,7 @@ defmodule AcmeServer do
     _request = decode_request(config, body)
 
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(config, account_id, order_id)
+    order = SiteEncrypt.Acme.Server.Account.get_order!(config, account_id, order_id)
 
     respond_json(
       200,
@@ -123,10 +123,10 @@ defmodule AcmeServer do
   def handle(config, :post, "/challenge/http/" <> order_path, body) do
     request = decode_request(config, body)
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(config, account_id, order_id)
+    order = SiteEncrypt.Acme.Server.Account.get_order!(config, account_id, order_id)
     authorizations_url = "#{config.site}/authorizations/#{order_path}"
 
-    AcmeServer.Challenges.start_challenge(config, %{
+    SiteEncrypt.Acme.Server.Challenges.start_challenge(config, %{
       dns: config.dns,
       account_id: account_id,
       order: order,
@@ -145,25 +145,25 @@ defmodule AcmeServer do
     csr = request.payload |> Map.fetch!("csr") |> Base.url_decode64!(padding: false)
 
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(config, account_id, order_id)
+    order = SiteEncrypt.Acme.Server.Account.get_order!(config, account_id, order_id)
 
-    cert = AcmeServer.Crypto.sign_csr!(csr, order.domains)
+    cert = SiteEncrypt.Acme.Server.Crypto.sign_csr!(csr, order.domains)
     updated_order = %{order | cert: cert, status: :valid}
-    AcmeServer.Account.update_order(config, account_id, updated_order)
+    SiteEncrypt.Acme.Server.Account.update_order(config, account_id, updated_order)
 
     respond_json(200, [nonce_header(config)], order_data(config, account_id, updated_order))
   end
 
   def handle(config, :post, "/order/" <> order_path, _body) do
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(config, account_id, order_id)
+    order = SiteEncrypt.Acme.Server.Account.get_order!(config, account_id, order_id)
     respond_json(200, [nonce_header(config)], order_data(config, account_id, order))
   end
 
   def handle(config, :post, "/cert/" <> order_path, body) do
     _ = decode_request(config, body)
     {account_id, order_id} = decode_order_path(order_path)
-    certificate = AcmeServer.Account.get_order!(config, account_id, order_id).cert
+    certificate = SiteEncrypt.Acme.Server.Account.get_order!(config, account_id, order_id).cert
     respond(200, [nonce_header(config)], certificate)
   end
 
@@ -199,11 +199,12 @@ defmodule AcmeServer do
     do: respond(status, [{"Content-Type", "application/json"} | headers], Jason.encode!(data))
 
   defp nonce_header(config) do
-    {"Replay-Nonce", AcmeServer.Nonce.new(config) |> to_string() |> Base.encode64(padding: false)}
+    {"Replay-Nonce",
+     SiteEncrypt.Acme.Server.Nonce.new(config) |> to_string() |> Base.encode64(padding: false)}
   end
 
   defp decode_request(config, body) do
-    {:ok, request} = AcmeServer.JWS.decode(body)
+    {:ok, request} = SiteEncrypt.Acme.Server.JWS.decode(body)
     verify_nonce!(config, request)
     request
   end
@@ -217,7 +218,7 @@ defmodule AcmeServer do
       |> Base.decode64!(padding: false)
       |> String.to_integer()
 
-    AcmeServer.Nonce.verify!(config, nonce)
+    SiteEncrypt.Acme.Server.Nonce.verify!(config, nonce)
   end
 
   defp decode_order_path(order_path) do
@@ -232,6 +233,6 @@ defmodule AcmeServer do
         :error -> Account.create(config, client_key(request))
       end
 
-    {account, AcmeServer.Account.new_order(config, account, domains)}
+    {account, SiteEncrypt.Acme.Server.Account.new_order(config, account, domains)}
   end
 end

@@ -34,7 +34,7 @@ defmodule SiteEncrypt.Certifier.Job do
     opts =
       if match?({:internal, _}, config.directory_url), do: [verify_server_cert: false], else: []
 
-    {:ok, http_pool} = Parent.GenServer.start_child({AcmeClient.Http, opts})
+    {:ok, http_pool} = Parent.GenServer.start_child({SiteEncrypt.Acme.Client.Http, opts})
 
     Parent.GenServer.start_child(%{
       id: :job,

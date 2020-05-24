@@ -111,7 +111,7 @@ defmodule SiteEncrypt.Phoenix do
     port = Keyword.fetch!(acme_server_config, :port)
     SiteEncrypt.log(config, "Running local ACME server at port #{port}")
 
-    AcmeServer.Standalone.child_spec(
+    SiteEncrypt.Acme.Server.Standalone.child_spec(
       adapter: {Plug.Cowboy, options: [port: port]},
       dns: dns(config, endpoint)
     )

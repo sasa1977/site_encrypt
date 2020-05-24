@@ -1,6 +1,5 @@
-defmodule AcmeClient do
-  alias AcmeClient.API
-  alias AcmeClient.Crypto
+defmodule SiteEncrypt.Acme.Client do
+  alias SiteEncrypt.Acme.Client.{API, Crypto}
 
   def new_account(http_pool, directory_url, contacts, opts \\ []) do
     account_key = JOSE.JWK.generate_key({:rsa, Keyword.get(opts, :key_length, 2048)})

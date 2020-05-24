@@ -1,5 +1,5 @@
-defmodule AcmeClient.API do
-  alias AcmeClient.{Crypto, Http}
+defmodule SiteEncrypt.Acme.Client.API do
+  alias SiteEncrypt.Acme.Client.{Crypto, Http}
 
   def new_session(http_pool, url, account_key) do
     session = %{

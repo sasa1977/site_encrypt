@@ -1,4 +1,4 @@
-defmodule AcmeServer.JWS do
+defmodule SiteEncrypt.Acme.Server.JWS do
   @spec decode(iodata()) :: {:ok, map()} | :error
   def decode(body) do
     data = Jason.decode!(body)
@@ -17,7 +17,7 @@ defmodule AcmeServer.JWS do
           |> URI.parse()
           |> Map.fetch!(:path)
 
-        AcmeServer.Account.client_key(account_id)
+        SiteEncrypt.Acme.Server.Account.client_key(account_id)
       end)
 
     key = JOSE.JWK.from(jwk)

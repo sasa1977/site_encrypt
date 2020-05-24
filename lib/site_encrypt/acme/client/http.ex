@@ -1,6 +1,6 @@
-defmodule AcmeClient.Http do
+defmodule SiteEncrypt.Acme.Client.Http do
   use Parent.GenServer
-  alias AcmeClient.Http.Connection
+  alias SiteEncrypt.Acme.Client.Http.Connection
 
   def start_link(opts), do: Parent.GenServer.start_link(__MODULE__, opts)
 

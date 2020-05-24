@@ -1,4 +1,4 @@
-defmodule AcmeServer.Challenges do
+defmodule SiteEncrypt.Acme.Server.Challenges do
   @moduledoc false
 
   def child_spec(config) do
@@ -15,9 +15,9 @@ defmodule AcmeServer.Challenges do
   def start_challenge(config, challenge_data) do
     DynamicSupervisor.start_child(
       via(config),
-      {AcmeServer.Challenge, {config, challenge_data}}
+      {SiteEncrypt.Acme.Server.Challenge, {config, challenge_data}}
     )
   end
 
-  defp via(config), do: AcmeServer.Registry.via_tuple({__MODULE__, config.site})
+  defp via(config), do: SiteEncrypt.Acme.Server.Registry.via_tuple({__MODULE__, config.site})
 end
