@@ -1,8 +1,4 @@
 defmodule SiteEncrypt.Phoenix.Test do
-  require X509.ASN1
-  alias SiteEncrypt.Registry
-  import ExUnit.Assertions
-
   defmacro __using__(opts) do
     quote bind_quoted: [endpoint: Keyword.fetch!(opts, :endpoint)] do
       use ExUnit.Case, async: false
@@ -45,7 +41,7 @@ defmodule SiteEncrypt.Phoenix.Test do
           |> Keyword.values()
           |> Enum.map(&to_string/1)
 
-        assert domains == Registry.config(unquote(endpoint)).domains
+        assert domains == SiteEncrypt.Registry.config(unquote(endpoint)).domains
       end
     end
   end
