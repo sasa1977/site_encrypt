@@ -76,6 +76,8 @@ defmodule SiteEncrypt do
   @doc false
   def initialize_certs(config) do
     Certification.restore(config)
+    unless is_nil(config.backup) or File.exists?(config.backup), do: Certification.backup(config)
+
     File.mkdir_p!(cert_folder(config))
     File.chmod!(config.db_folder, 0o700)
 

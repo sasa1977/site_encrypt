@@ -1,17 +1,25 @@
 defmodule SiteEncrypt.Certification do
+  require Logger
   alias SiteEncrypt.Registry
+  alias SiteEncrypt.Certification.Periodic
 
   def start_link(config) do
     with {:ok, pid} <-
            Supervisor.start_link(
-             [
-               job_parent_spec(config),
-               {SiteEncrypt.Certification.Periodic, config}
-             ],
+             [job_parent_spec(config), {Periodic, config}],
              strategy: :one_for_one
            ) do
-      if config.mode == :auto and SiteEncrypt.client(config).pems(config) == :error,
-        do: start_renew(config)
+      if config.mode == :auto do
+        if Periodic.cert_due_for_renewal?(config) do
+          start_renew(config)
+        else
+          SiteEncrypt.log(config, [
+            "Certificate for #{hd(config.domains)} is valid until ",
+            "#{Periodic.cert_valid_until(config)}. ",
+            "Next renewal is scheduled for #{Periodic.renewal_date(config)}."
+          ])
+        end
+      end
 
       {:ok, pid}
     end
@@ -30,6 +38,32 @@ defmodule SiteEncrypt.Certification do
     receive do
       {:DOWN, ^mref, :process, ^pid, _reason} -> :ok
     end
+  end
+
+  @spec backup(SiteEncrypt.config()) :: :ok
+  def backup(config) do
+    {:ok, tar} = :erl_tar.open(to_charlist(config.backup), [:write, :compressed])
+
+    config.db_folder
+    |> Path.join("*")
+    |> Path.wildcard()
+    |> Enum.each(fn path ->
+      :ok =
+        :erl_tar.add(
+          tar,
+          to_charlist(path),
+          to_charlist(Path.relative_to(path, config.db_folder)),
+          []
+        )
+    end)
+
+    :ok = :erl_tar.close(tar)
+    File.chmod!(config.backup, 0o600)
+  catch
+    type, error ->
+      Logger.error(
+        "Error backing up certificates: #{Exception.format(type, error, __STACKTRACE__)}"
+      )
   end
 
   @spec restore(SiteEncrypt.config()) :: :ok
@@ -51,6 +85,11 @@ defmodule SiteEncrypt.Certification do
         SiteEncrypt.log(config, "certificates for #{hd(config.domains)} restored")
       end
     end
+  catch
+    type, error ->
+      Logger.error(
+        "Error restoring certificates: #{Exception.format(type, error, __STACKTRACE__)}"
+      )
   end
 
   defp job_parent_spec(config) do

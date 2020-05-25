@@ -12,10 +12,13 @@ defmodule SiteEncrypt.Certification.Periodic do
   end
 
   defp time_to_renew?(config, now) do
-    rem(now.hour, 8) == 0 and
-      now.minute == 0 and
-      now.second == 0 and
-      Date.compare(DateTime.to_date(now), renewal_date(config)) in [:eq, :gt]
+    rem(now.hour, 8) == 0 and now.minute == 0 and now.second == 0 and
+      cert_due_for_renewal?(config, now)
+  end
+
+  def cert_due_for_renewal?(config, now \\ nil) do
+    now = now || utc_now(config)
+    Date.compare(DateTime.to_date(now), renewal_date(config)) in [:eq, :gt]
   end
 
   def renewal_date(config) do

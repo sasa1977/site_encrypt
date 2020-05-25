@@ -22,7 +22,7 @@ defmodule SiteEncrypt.Certification.Job do
     SiteEncrypt.store_pems(config, keys)
     :ssl.clear_pem_cache()
 
-    unless is_nil(config.backup), do: backup(config)
+    unless is_nil(config.backup), do: SiteEncrypt.Certification.backup(config)
     config.callback.handle_new_cert()
 
     :ok
@@ -62,30 +62,5 @@ defmodule SiteEncrypt.Certification.Job do
           "Next renewal is scheduled for #{renewal_date}. "
         ])
     end
-  end
-
-  defp backup(config) do
-    {:ok, tar} = :erl_tar.open(to_charlist(config.backup), [:write, :compressed])
-
-    config.db_folder
-    |> Path.join("*")
-    |> Path.wildcard()
-    |> Enum.each(fn path ->
-      :ok =
-        :erl_tar.add(
-          tar,
-          to_charlist(path),
-          to_charlist(Path.relative_to(path, config.db_folder)),
-          []
-        )
-    end)
-
-    :ok = :erl_tar.close(tar)
-    File.chmod!(config.backup, 0o600)
-  catch
-    type, error ->
-      Logger.error(
-        "Error backing up certificate: #{Exception.format(type, error, __STACKTRACE__)}"
-      )
   end
 end
