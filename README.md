@@ -60,10 +60,23 @@ defmodule PhoenixDemo.Endpoint do
   @impl SiteEncrypt
   def certification do
     SiteEncrypt.configure(
-      directory_url: {:internal, port: 4002},
-      domains: ["localhost"],
-      emails: ["admin@foo.bar"],
-      db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("db"),
+      # Note that native client is very immature. If you want a more stable behaviour, you can
+      # provide `:certbot` instead. Note that in this case certbot needs to be installed on the
+      # host machine.
+      client: :native,
+
+      domains: ["mysite.com", "www.mysite.com"],
+      emails: ["contact@abc.org", "another_contact@abc.org"],
+
+      db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("site_encrypt"),
+
+      # set OS env var MODE to "staging" or "production" on staging/production hosts
+      directory_url:
+        case System.get_env("MODE", "local") do
+          "local" -> {:internal, port: 4002}
+          "staging" -> "https://acme-staging-v02.api.letsencrypt.org/directory"
+          "production" -> "https://acme-v02.api.letsencrypt.org/directory"
+        end
     )
   end
 
@@ -141,29 +154,6 @@ end
 
 ```
 
-### Production
-
-To make it work in production, you need to own the domain and run your site there.
-
-You need to change some parameters in `certification/1` callback.
-
-```elixir
-def certification() do
-  [
-    directory_url: "https://acme-v02.api.letsencrypt.org/directory",
-    domains: ["<DOMAIN NAME>"],
-    emails: ["<ADMIN EMAIL>"]
-    # other parameters can remain the same
-  ]
-end
-```
-
-For staging, you can use https://acme-staging-v02.api.letsencrypt.org/directory. Make sure to change the domain name as well.
-
-In both cases (staging and production certification), the site must be publicly reachable at `http://<DOMAIN NAME>`.
-
-It's up to you to decide how to vary the settings between local development and production.
-
 ## Backup and restore
 
 SiteEncrypt supports automatic backup. To enable it, include `backup: path_to_backup_tgz` in the options returned by `config/0`. Every time a new certificate is obtained, the entire content of the `db_folder` will be backed up to this file as a compressed tarball. This happens before `handle_new_cert` is invoked.
@@ -179,7 +169,7 @@ Note that a successful restore is treated as a certificate renewal, which means 
 
 ## Force renewal
 
-To force renew a certificate, you can invoke `SiteEncrypt.Certifier.force_renew(YourEndpointModule)`. This will temporarily pause the periodic renewal (waiting for it to finish if it happens to be running), renew the certificate, and resume the periodic renewal. The new certificate will be backed up, and `handle_new_cert` will be invoked.
+To force renew a certificate, you can invoke `SiteEncrypt.force_renew(YourEndpointModule)`. This will temporarily pause the periodic renewal (waiting for it to finish if it happens to be running), renew the certificate, and resume the periodic renewal. The new certificate will be backed up, and `handle_new_cert` will be invoked.
 
 ## License
 

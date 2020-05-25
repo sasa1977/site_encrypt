@@ -1,26 +1,29 @@
 defmodule SiteEncrypt do
   require Logger
 
+  alias SiteEncrypt.Certification
+
   @type config :: %{
           id: id,
           directory_url: directory_url,
           domains: nonempty_list(String.t()),
           emails: nonempty_list(String.t()),
           db_folder: String.t(),
-          renew_before_expires_in_days: pos_integer(),
-          log_level: log_level,
+          days_to_renew: pos_integer(),
+          log_level: Logger.level(),
           mode: :auto | :manual,
-          certifier: SiteEncrypt.Certifier.Native | SiteEncrypt.Certifier.Certbot,
+          client: :native | :certbot,
           backup: String.t() | nil,
           callback: module
         }
 
   @type id :: any
   @type directory_url :: String.t() | {:internal, [port: pos_integer]}
-  @type log_level :: Logger.level()
-
   @callback certification() :: config()
   @callback handle_new_cert() :: any
+
+  @spec force_renew(id()) :: :ok
+  def force_renew(id), do: Certification.run_renew(SiteEncrypt.Registry.config(id))
 
   @spec https_keys(id) :: [keyfile: Path.t(), certfile: Path.t(), cacertfile: Path.t()]
   def https_keys(id) do
@@ -37,44 +40,46 @@ defmodule SiteEncrypt do
 
   defmacro configure(opts) do
     quote do
-      unquote(__MODULE__).normalized_config(unquote(opts), __MODULE__, unquote(Mix.env()))
+      defaults = unquote(__MODULE__).defaults(__MODULE__, unquote(Mix.env()))
+      config = Map.merge(defaults, Map.new(unquote(opts)))
+
+      if Enum.empty?(config.domains),
+        do: raise("You need to provide at least one domain in `:domains` option")
+
+      if Enum.empty?(config.emails),
+        do: raise("You need to provide at least one email in `:emails` option")
+
+      if is_nil(config.client), do: raise("`:client` option is required")
+
+      config
     end
   end
 
   @doc false
-  @spec normalized_config(Keyword.t(), module, :dev | :test | :prod) :: config
-  def normalized_config(opts, callback, mix_env) do
-    config = Map.merge(defaults(callback, mix_env), Map.new(opts))
+  def client(%{client: :native}), do: Certification.Native
+  def client(%{client: :certbot}), do: Certification.Certbot
 
-    if Enum.empty?(config.domains),
-      do: raise("You need to provide at least one domain in `:domains` option")
-
-    if Enum.empty?(config.emails),
-      do: raise("You need to provide at least one email in `:emails` option")
-
-    config
-  end
-
-  defp defaults(callback, mix_env) do
+  @doc false
+  def defaults(callback, mix_env) do
     %{
       id: callback,
-      renew_before_expires_in_days: 30,
+      days_to_renew: 30,
       domains: [],
       log_level: :info,
       mode: if(mix_env == :test, do: :manual, else: :auto),
       backup: nil,
-      certifier: SiteEncrypt.Certifier.Certbot,
+      client: nil,
       callback: callback
     }
   end
 
   @doc false
   def initialize_certs(config) do
-    SiteEncrypt.Certifier.restore(config)
+    Certification.restore(config)
     File.mkdir_p!(cert_folder(config))
     File.chmod!(config.db_folder, 0o700)
 
-    case config.certifier.pems(config) do
+    case SiteEncrypt.client(config).pems(config) do
       {:ok, keys} -> store_pems(config, keys)
       :error -> unless certificates_exist?(config), do: generate_self_signed_certificate!(config)
     end

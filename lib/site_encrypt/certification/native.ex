@@ -1,8 +1,8 @@
-defmodule SiteEncrypt.Certifier.Native do
-  @behaviour SiteEncrypt.Certifier.Job
+defmodule SiteEncrypt.Certification.Native do
+  @behaviour SiteEncrypt.Certification.Job
   require Logger
 
-  alias SiteEncrypt.Certifier.Job
+  alias SiteEncrypt.Certification.Job
 
   @impl Job
   def pems(config) do

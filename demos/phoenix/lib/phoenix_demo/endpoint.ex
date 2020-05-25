@@ -22,35 +22,17 @@ defmodule PhoenixDemo.Endpoint do
 
   @impl SiteEncrypt
   def certification do
-    common_settings = [
-      db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("db"),
-      certifier: SiteEncrypt.Certifier.Native
-    ]
-
-    target_machine_settings =
-      case System.get_env("MODE", "local") do
-        "local" ->
-          [
-            directory_url: {:internal, port: 4002},
-            domains: ["localhost"],
-            emails: ["admin@foo.bar"]
-          ]
-
-        "staging" ->
-          [
-            directory_url: "https://acme-staging-v02.api.letsencrypt.org/directory",
-            domains: ["staging.host", "www.staging.host"],
-            emails: ["admin@email.address"]
-          ]
-
-        "production" ->
-          [
-            directory_url: "https://acme-v02.api.letsencrypt.org/directory",
-            domains: ["production.host", "www.production.host"],
-            emails: ["admin@email.address"]
-          ]
-      end
-
-    SiteEncrypt.configure(common_settings ++ target_machine_settings)
+    SiteEncrypt.configure(
+      client: :native,
+      domains: ["mysite.com", "www.mysite.com"],
+      emails: ["admin@email.address"],
+      db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("site_encrypt"),
+      directory_url:
+        case System.get_env("MODE", "local") do
+          "local" -> {:internal, port: 4002}
+          "staging" -> "https://acme-staging-v02.api.letsencrypt.org/directory"
+          "production" -> "https://acme-v02.api.letsencrypt.org/directory"
+        end
+    )
   end
 end

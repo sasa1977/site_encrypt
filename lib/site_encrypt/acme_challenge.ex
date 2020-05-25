@@ -22,7 +22,7 @@ defmodule SiteEncrypt.AcmeChallenge do
 
       nil ->
         config = Registry.config(id)
-        config.certifier.full_challenge(config, challenge)
+        SiteEncrypt.client(config).full_challenge(config, challenge)
     end
   end
 end

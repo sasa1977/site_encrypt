@@ -1,4 +1,4 @@
-defmodule SiteEncrypt.Certifier.Job do
+defmodule SiteEncrypt.Certification.Job do
   use Parent.GenServer
   require Logger
 
@@ -19,7 +19,7 @@ defmodule SiteEncrypt.Certifier.Job do
   end
 
   def post_certify(config) do
-    {:ok, keys} = config.certifier.pems(config)
+    {:ok, keys} = SiteEncrypt.client(config).pems(config)
     SiteEncrypt.store_pems(config, keys)
     :ssl.clear_pem_cache()
 
@@ -49,10 +49,22 @@ defmodule SiteEncrypt.Certifier.Job do
   def handle_child_terminated(:job, _meta, _pid, _reason, state), do: {:stop, :normal, state}
 
   defp certify(config, http_pool, opts) do
-    case config.certifier.certify(config, http_pool, opts) do
-      :error -> Logger.error("Error obtaining certificate for #{hd(config.domains)}")
-      :new_cert -> post_certify(config)
-      :no_change -> :ok
+    case SiteEncrypt.client(config).certify(config, http_pool, opts) do
+      :error ->
+        Logger.error("Error obtaining certificate for #{hd(config.domains)}")
+
+      :new_cert ->
+        post_certify(config)
+        valid_until = SiteEncrypt.Certification.Periodic.cert_valid_until(config)
+        renewal_date = SiteEncrypt.Certification.Periodic.renewal_date(config)
+
+        SiteEncrypt.log(config, [
+          "Certificate successfully obtained! It is valid until #{valid_until}. ",
+          "Next renewal is scheduled for #{renewal_date}. "
+        ])
+
+      :no_change ->
+        :ok
     end
   end
 

@@ -37,7 +37,7 @@ defmodule SiteEncrypt.Phoenix do
 
     # The supervision tree is one layer deeper for easier testing. We're starting the site
     # supervisor as a single child of the root supervisor. All other processes (e.g. endpoint,
-    # certifier, internal acme server) are running under the site supervisor.
+    # certification, internal acme server) are running under the site supervisor.
     #
     # This supervision structure allows us to easily stop and restart the entire site by stopping
     # and starting the site supervisor.
@@ -73,7 +73,7 @@ defmodule SiteEncrypt.Phoenix do
       [
         Supervisor.child_spec(endpoint, id: :endpoint),
         # The remaining processes are started via `start_certification`. This is needed so we
-        # can get the fully shaped endpoint config, and determine if we need to start certifier
+        # can get the fully shaped endpoint config, and determine if we need to start certification
         # processes.
         %{
           id: :certification,
@@ -94,7 +94,7 @@ defmodule SiteEncrypt.Phoenix do
     if server? do
       Supervisor.start_link(
         Enum.reject(
-          [acme_server_spec(config, endpoint), {SiteEncrypt.Certifier, config}],
+          [acme_server_spec(config, endpoint), {SiteEncrypt.Certification, config}],
           &is_nil/1
         ),
         strategy: :one_for_one

@@ -1,21 +1,36 @@
-defmodule SiteEncrypt.Certifier do
+defmodule SiteEncrypt.Certification do
   alias SiteEncrypt.Registry
 
   def start_link(config) do
     with {:ok, pid} <-
            Supervisor.start_link(
-             [job_parent_spec(config), {SiteEncrypt.Certifier.PeriodicRefresh, config}],
+             [
+               job_parent_spec(config),
+               {SiteEncrypt.Certification.Periodic, config}
+             ],
              strategy: :one_for_one
            ) do
-      if config.mode == :auto and config.certifier.pems(config) == :error,
+      if config.mode == :auto and SiteEncrypt.client(config).pems(config) == :error,
         do: start_renew(config)
 
       {:ok, pid}
     end
   end
 
-  @spec force_renew(SiteEncrypt.id()) :: :already_started | :finished
-  def force_renew(id), do: run_renew(Registry.config(id))
+  @spec run_renew(SiteEncrypt.config()) :: :ok
+  def run_renew(config) do
+    pid =
+      case start_renew(config) do
+        {:ok, pid} -> pid
+        {:error, {:already_started, pid}} -> pid
+      end
+
+    mref = Process.monitor(pid)
+
+    receive do
+      {:DOWN, ^mref, :process, ^pid, _reason} -> :ok
+    end
+  end
 
   @spec restore(SiteEncrypt.config()) :: :ok
   def restore(config) do
@@ -31,7 +46,7 @@ defmodule SiteEncrypt.Certifier do
           [:compressed, cwd: to_char_list(config.db_folder)]
         )
 
-      SiteEncrypt.Certifier.Job.post_certify(config)
+      SiteEncrypt.Certification.Job.post_certify(config)
       SiteEncrypt.log(config, "certificates for #{hd(config.domains)} restored")
     end
   end
@@ -43,24 +58,10 @@ defmodule SiteEncrypt.Certifier do
     }
   end
 
-  defp run_renew(config) do
-    case start_renew(config) do
-      {:ok, pid} ->
-        mref = Process.monitor(pid)
-
-        receive do
-          {:DOWN, ^mref, :process, ^pid, _reason} -> :finished
-        end
-
-      {:error, {:already_started, _pid}} ->
-        :already_started
-    end
-  end
-
   defp start_renew(config) do
     DynamicSupervisor.start_child(
       Registry.name(config.id, __MODULE__.JobParent),
-      Supervisor.child_spec({SiteEncrypt.Certifier.Job, config}, restart: :temporary)
+      Supervisor.child_spec({SiteEncrypt.Certification.Job, config}, restart: :temporary)
     )
   end
 

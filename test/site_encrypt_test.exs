@@ -1,37 +1,19 @@
-for certifier <- [Native, Certbot],
-    certifier != Certbot or System.get_env("CI") == "true" do
-  defmodule Module.concat(SiteEncrypt, "#{certifier}Test") do
+for client <- [:native, :certbot],
+    client != :certbot or System.get_env("CI") == "true" do
+  defmodule Module.concat(SiteEncrypt, "#{Macro.camelize(to_string(client))}Test") do
     use SiteEncrypt.Phoenix.Test, endpoint: __MODULE__.TestEndpoint
-    alias __MODULE__.TestEndpoint
-    alias SiteEncrypt.Certifier.PeriodicRefresh
+    use ExUnitProperties
     import SiteEncrypt.Phoenix.Test
+    alias __MODULE__.TestEndpoint
 
     setup_all do
       start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
       :ok
     end
 
-    test "automatic renewal" do
-      config = SiteEncrypt.Registry.config(TestEndpoint)
-      first_cert = get_cert(TestEndpoint)
-
-      assert Date.diff(
-               PeriodicRefresh.cert_valid_until(config),
-               PeriodicRefresh.renewal_date(config)
-             ) == config.renew_before_expires_in_days
-
-      no_renew_on = midnight(PeriodicRefresh.renewal_date(config))
-      assert PeriodicRefresh.tick(TestEndpoint, no_renew_on) == {:error, :job_not_started}
-      assert get_cert(TestEndpoint) == first_cert
-
-      renew_on = midnight(add_days(no_renew_on, 1))
-      assert PeriodicRefresh.tick(TestEndpoint, renew_on) == :ok
-      assert get_cert(TestEndpoint) != first_cert
-    end
-
     test "force_renew" do
       first_cert = get_cert(TestEndpoint)
-      assert SiteEncrypt.Certifier.force_renew(TestEndpoint) == :finished
+      assert SiteEncrypt.force_renew(TestEndpoint) == :ok
       assert get_cert(TestEndpoint) != first_cert
     end
 
@@ -50,19 +32,8 @@ for certifier <- [Native, Certbot],
       assert get_cert(TestEndpoint) == first_cert
 
       # make sure that renewal is still working correctly
-      assert :finished = SiteEncrypt.Certifier.force_renew(TestEndpoint)
+      assert SiteEncrypt.force_renew(TestEndpoint) == :ok
       refute get_cert(TestEndpoint) == first_cert
-    end
-
-    defp add_days(datetime, days) do
-      date = Date.add(datetime, days)
-      {:ok, datetime} = NaiveDateTime.new(date, NaiveDateTime.to_time(datetime))
-      datetime
-    end
-
-    defp midnight(datetime) do
-      {:ok, datetime} = NaiveDateTime.new(NaiveDateTime.to_date(datetime), ~T[00:00:00])
-      datetime
     end
 
     defmodule TestEndpoint do
@@ -90,7 +61,7 @@ for certifier <- [Native, Certbot],
           emails: ["admin@foo.bar"],
           db_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("db"),
           backup: Path.join(System.tmp_dir!(), "site_encrypt_backup.tgz"),
-          certifier: unquote(Module.concat(SiteEncrypt.Certifier, certifier))
+          client: unquote(client)
         )
       end
 

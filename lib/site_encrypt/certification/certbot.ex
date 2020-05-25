@@ -1,8 +1,8 @@
-defmodule SiteEncrypt.Certifier.Certbot do
-  @behaviour SiteEncrypt.Certifier.Job
+defmodule SiteEncrypt.Certification.Certbot do
+  @behaviour SiteEncrypt.Certification.Job
   require Logger
 
-  @impl SiteEncrypt.Certifier.Job
+  @impl SiteEncrypt.Certification.Job
   def pems(config) do
     [
       privkey: keyfile(config),
@@ -22,7 +22,7 @@ defmodule SiteEncrypt.Certifier.Certbot do
     end
   end
 
-  @impl SiteEncrypt.Certifier.Job
+  @impl SiteEncrypt.Certification.Job
   def certify(config, _http_pool, opts) do
     ensure_folders(config)
     original_keys_sha = keys_sha(config)
@@ -41,7 +41,7 @@ defmodule SiteEncrypt.Certifier.Certbot do
     end
   end
 
-  @impl SiteEncrypt.Certifier.Job
+  @impl SiteEncrypt.Certification.Job
   def full_challenge(config, challenge) do
     Path.join([
       webroot_folder(%{db_folder: config.db_folder}),
