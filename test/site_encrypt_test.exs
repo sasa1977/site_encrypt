@@ -59,7 +59,11 @@ for client <- [:native, :certbot],
           directory_url: internal(),
           domains: ["localhost", "foo.localhost"],
           emails: ["admin@foo.bar"],
-          db_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("db"),
+          db_folder:
+            Application.app_dir(
+              :site_encrypt,
+              Path.join(["priv", "site_encrypt_#{unquote(client)}"])
+            ),
           backup: Path.join(System.tmp_dir!(), "site_encrypt_backup.tgz"),
           client: unquote(client)
         )

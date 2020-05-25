@@ -6,7 +6,11 @@ defmodule SiteEncrypt.Certification.Native do
 
   @impl Job
   def pems(config) do
-    {:ok, Enum.map(~w/privkey cert chain/a, &{&1, load_file!(config, "#{&1}.pem")})}
+    {:ok,
+     Enum.map(
+       ~w/privkey cert chain/a,
+       &{&1, File.read!(Path.join(domain_folder(config), "#{&1}.pem"))}
+     )}
   catch
     _, _ ->
       :error
@@ -73,8 +77,7 @@ defmodule SiteEncrypt.Certification.Native do
   end
 
   defp account_key(config) do
-    config
-    |> load_file!("account_key.json")
+    File.read!(Path.join(ca_folder(config), "account_key.json"))
     |> Jason.decode!()
     |> JOSE.JWK.from_map()
   catch
@@ -83,34 +86,38 @@ defmodule SiteEncrypt.Certification.Native do
 
   defp store_account_key!(config, account_key) do
     {_, map} = JOSE.JWK.to_map(account_key)
-    store_file!(config, "account_key.json", Jason.encode!(map))
+    store_file!(Path.join(ca_folder(config), "account_key.json"), Jason.encode!(map))
   end
 
   defp store_pems!(config, pems) do
     Enum.each(
       pems,
-      fn {type, content} -> store_file!(config, "#{type}.pem", content) end
+      fn {type, content} ->
+        store_file!(Path.join(domain_folder(config), "#{type}.pem"), content)
+      end
     )
   end
 
-  defp store_file!(config, name, content) do
-    File.mkdir_p(root_folder(config))
-    File.write!(Path.join(root_folder(config), name), content)
+  defp store_file!(path, content) do
+    File.mkdir_p(Path.dirname(path))
+    File.write!(path, content)
+    File.chmod!(path, 0o600)
   end
 
-  defp load_file!(config, name),
-    do: File.read!(Path.join(root_folder(config), name))
+  defp domain_folder(config),
+    do: Path.join([ca_folder(config), "domains", hd(config.domains)])
 
-  defp root_folder(config) do
+  defp ca_folder(config) do
     Path.join([
       config.db_folder,
-      "elixir_acme_client",
-      ca_folder(config),
-      hd(config.domains)
+      "native",
+      "authorities",
+      case URI.parse(directory_url(config)) do
+        %URI{host: host, port: 443} -> host
+        %URI{host: host, port: port} -> "#{host}_#{port}"
+      end
     ])
   end
-
-  defp ca_folder(config), do: URI.parse(directory_url(config)).host
 
   defp directory_url(config) do
     with {:internal, opts} <- config.directory_url,

@@ -122,5 +122,5 @@ defmodule SiteEncrypt do
     do: File.write!(Path.join(cert_folder(config), file_name), contents)
 
   defp cert_folder(config),
-    do: Path.join(config.db_folder, "certs/")
+    do: Path.join([config.db_folder, "certs", hd(config.domains)])
 end
