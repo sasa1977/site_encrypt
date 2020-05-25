@@ -1,9 +1,18 @@
 defmodule SiteEncrypt.Acme.Client.Http do
+  @moduledoc false
+
   use Parent.GenServer
   alias SiteEncrypt.Acme.Client.Http.Connection
 
+  @type opts :: [verify_server_cert: boolean]
+  @type method :: :get | :head | :post | :put | :delete
+  @type response :: %{status: Mint.Types.status(), headers: Mint.Types.headers(), body: binary}
+
+  @spec start_link(opts) :: GenServer.on_start()
   def start_link(opts), do: Parent.GenServer.start_link(__MODULE__, opts)
 
+  @spec request(pid, method, String.t(), Mint.Types.headers(), binary) ::
+          {:ok, response} | {:error, Mint.Types.error()}
   def request(pool, method, url, headers, body) do
     uri = URI.parse(url)
     host = URI.to_string(%URI{scheme: uri.scheme, host: uri.host, port: uri.port})
@@ -43,6 +52,7 @@ defmodule SiteEncrypt.Acme.Client.Http do
   end
 
   defmodule Connection do
+    @moduledoc false
     use GenServer
 
     def start_link(url, opts), do: GenServer.start_link(__MODULE__, {url, opts})

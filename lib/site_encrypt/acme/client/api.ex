@@ -1,6 +1,43 @@
 defmodule SiteEncrypt.Acme.Client.API do
+  @moduledoc false
   alias SiteEncrypt.Acme.Client.{Crypto, Http}
 
+  @type session :: %{
+          http_pool: pid,
+          account_key: JOSE.JWK.t(),
+          kid: nil | String.t(),
+          directory: nil | directory,
+          nonce: nil | String.t()
+        }
+
+  @type directory :: %{
+          key_change: String.t(),
+          new_account: String.t(),
+          new_nonce: String.t(),
+          new_order: String.t(),
+          revoke_cert: String.t()
+        }
+
+  @type error :: Mint.Types.error() | HTTP.response()
+
+  @type order :: %{
+          :status => status,
+          :authorizations => [String.t()],
+          :finalize => String.t(),
+          :location => String.t(),
+          optional(:certificate) => String.t()
+        }
+
+  @type challenge :: %{
+          :status => status,
+          :type => String.t(),
+          :url => String.t(),
+          optional(:token) => String.t()
+        }
+
+  @type status :: :invalid | :pending | :ready | :processing | :valid
+
+  @spec new_session(pid, String.t(), X509.PrivateKey.t()) :: {:ok, session} | {:error, error}
   def new_session(http_pool, url, account_key) do
     session = %{
       http_pool: http_pool,
@@ -22,12 +59,14 @@ defmodule SiteEncrypt.Acme.Client.API do
     end
   end
 
+  @spec new_nonce(session) :: {:ok, session} | {:error, error}
   def new_nonce(session) do
     with {:ok, response, session} <- http_request(session, :head, session.directory.new_nonce),
          :ok <- validate_response(response),
          do: {:ok, session}
   end
 
+  @spec new_account(session, [String.t()]) :: {:ok, session} | {:error, error}
   def new_account(session, emails) do
     url = session.directory.new_account
     payload = %{"contact" => Enum.map(emails, &"mailto:#{&1}"), "termsOfServiceAgreed" => true}
@@ -38,6 +77,7 @@ defmodule SiteEncrypt.Acme.Client.API do
     end
   end
 
+  @spec fetch_kid(session) :: {:ok, session} | {:error, error}
   def fetch_kid(session) do
     url = session.directory.new_account
     payload = %{"onlyReturnExisting" => true}
@@ -48,6 +88,7 @@ defmodule SiteEncrypt.Acme.Client.API do
     end
   end
 
+  @spec new_order(session, [String.t()]) :: {:ok, order, session} | {:error, error}
   def new_order(session, domains) do
     payload = %{"identifiers" => Enum.map(domains, &%{"type" => "dns", "value" => &1})}
 
@@ -57,8 +98,7 @@ defmodule SiteEncrypt.Acme.Client.API do
 
       result =
         response.payload
-        |> normalize_keys(~w/authorizations expires finalize status/)
-        |> Map.update!(:expires, &from_iso8601!/1)
+        |> normalize_keys(~w/authorizations finalize status/)
         |> Map.update!(:status, &parse_status!/1)
         |> Map.put(:location, location)
 
@@ -66,6 +106,7 @@ defmodule SiteEncrypt.Acme.Client.API do
     end
   end
 
+  @spec order_status(session, order) :: {:ok, order, session} | {:error, error}
   def order_status(session, order) do
     with {:ok, response, session} <- jws_request(session, :post, order.location, :kid) do
       result =
@@ -77,6 +118,7 @@ defmodule SiteEncrypt.Acme.Client.API do
     end
   end
 
+  @spec authorization(session, String.t()) :: {:ok, [challenge], session}
   def authorization(session, authorization) do
     with {:ok, response, session} <- jws_request(session, :post, authorization, :kid) do
       challenges =
@@ -89,6 +131,8 @@ defmodule SiteEncrypt.Acme.Client.API do
     end
   end
 
+  @spec challenge(session, challenge) ::
+          {:ok, %{status: status, token: String.t()}, session} | {:error, error}
   def challenge(session, challenge) do
     payload = %{}
 
@@ -102,19 +146,21 @@ defmodule SiteEncrypt.Acme.Client.API do
     end
   end
 
+  @spec finalize(session, order, binary) :: {:ok, %{status: status}, session} | {:error, error}
   def finalize(session, order, csr) do
     payload = %{"csr" => Base.url_encode64(csr, padding: false)}
 
     with {:ok, response, session} <- jws_request(session, :post, order.finalize, :kid, payload) do
-      cert_info =
+      result =
         response.payload
-        |> normalize_keys(~w/certificate identifier status/)
+        |> normalize_keys(~w/status/)
         |> Map.update!(:status, &parse_status!/1)
 
-      {:ok, cert_info, session}
+      {:ok, result, session}
     end
   end
 
+  @spec get_cert(session, order) :: {:ok, String.t(), String.t(), session} | {:error, error}
   def get_cert(session, order) do
     with {:ok, response, session} <- jws_request(session, :post, order.certificate, :kid) do
       [cert | chain] = String.split(response.body, ~r/^\-+END CERTIFICATE\-+$\K/m, parts: 2)
@@ -190,18 +236,13 @@ defmodule SiteEncrypt.Acme.Client.API do
   defp headers(opts),
     do: [{"user-agent", "site_encrypt native client"} | Keyword.get(opts, :headers, [])]
 
-  defp from_iso8601!(value) do
-    {:ok, datetime, _offset} = DateTime.from_iso8601(value)
-    datetime
-  end
-
   defp parse_status!("invalid"), do: :invalid
   defp parse_status!("pending"), do: :pending
   defp parse_status!("ready"), do: :ready
   defp parse_status!("processing"), do: :processing
   defp parse_status!("valid"), do: :valid
 
-  def normalize_keys(map, allowed_keys) do
+  defp normalize_keys(map, allowed_keys) do
     map
     |> Map.take(allowed_keys)
     |> Enum.into(%{}, fn {key, value} ->

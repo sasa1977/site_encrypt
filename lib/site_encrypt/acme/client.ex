@@ -1,19 +1,38 @@
 defmodule SiteEncrypt.Acme.Client do
+  @moduledoc false
   alias SiteEncrypt.Acme.Client.{API, Crypto}
 
+  @type cert_config :: %{
+          id: SiteEncrypt.id(),
+          domains: [String.t()],
+          poll_delay: pos_integer,
+          key_size: pos_integer,
+          register_challenge: (token :: String.t(), keythumbprint :: String.t() -> any),
+          await_challenge: (() -> boolean)
+        }
+
+  @type keys :: %{
+          privkey: String.t(),
+          cert: String.t(),
+          chain: String.t()
+        }
+
+  @spec new_account(pid, String.t(), [String.t()], key_size: pos_integer) :: API.session()
   def new_account(http_pool, directory_url, contacts, opts \\ []) do
-    account_key = JOSE.JWK.generate_key({:rsa, Keyword.get(opts, :key_length, 2048)})
+    account_key = JOSE.JWK.generate_key({:rsa, Keyword.get(opts, :key_size, 2048)})
     session = start_session(http_pool, directory_url, account_key)
     {:ok, session} = API.new_account(session, contacts)
     session
   end
 
+  @spec for_existing_account(pid, String.t(), JOSE.JWK.t()) :: API.session()
   def for_existing_account(http_pool, directory_url, account_key) do
     session = start_session(http_pool, directory_url, account_key)
     {:ok, session} = API.fetch_kid(session)
     session
   end
 
+  @spec create_certificate(API.session(), cert_config) :: {keys, API.session()}
   def create_certificate(session, config) do
     {:ok, order, session} = API.new_order(session, config.domains)
     {private_key, order, session} = process_new_order(session, order, config)
@@ -55,7 +74,7 @@ defmodule SiteEncrypt.Acme.Client do
   end
 
   defp process_new_order(session, %{status: :ready} = order, config) do
-    private_key = Crypto.new_private_key(Map.get(config, :key_length, 2048))
+    private_key = Crypto.new_private_key(Map.get(config, :key_size, 2048))
     csr = Crypto.csr(private_key, config.domains)
 
     {:ok, _finalization, session} = API.finalize(session, order, csr)

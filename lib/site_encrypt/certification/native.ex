@@ -1,4 +1,5 @@
 defmodule SiteEncrypt.Certification.Native do
+  @moduledoc false
   @behaviour SiteEncrypt.Certification.Job
   require Logger
 
@@ -38,7 +39,7 @@ defmodule SiteEncrypt.Certification.Native do
         http_pool,
         directory_url,
         [config.emails],
-        key_length: if(internal_ca?(config), do: 1024, else: 2048)
+        key_size: if(internal_ca?(config), do: 1024, else: 2048)
       )
 
     store_account_key!(config, session.account_key)
@@ -60,7 +61,7 @@ defmodule SiteEncrypt.Certification.Native do
         id: config.id,
         domains: config.domains,
         poll_delay: if(internal_ca?(config), do: 50, else: :timer.seconds(2)),
-        key_length: if(internal_ca?(config), do: 1024, else: 2048),
+        key_size: if(internal_ca?(config), do: 1024, else: 2048),
         register_challenge: &SiteEncrypt.Registry.register_challenge!(id, &1, &2),
         await_challenge: fn ->
           receive do
@@ -73,7 +74,7 @@ defmodule SiteEncrypt.Certification.Native do
 
     store_pems!(config, pems)
     SiteEncrypt.log(config, "New certificate for domain #{hd(config.domains)} obtained")
-    :new_cert
+    :ok
   end
 
   defp account_key(config) do

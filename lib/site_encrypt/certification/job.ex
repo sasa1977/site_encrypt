@@ -7,8 +7,7 @@ defmodule SiteEncrypt.Certification.Job do
   @callback pems(SiteEncrypt.config()) :: {:ok, pems} | :error
   @callback full_challenge(SiteEncrypt.config(), String.t()) :: String.t()
 
-  @callback certify(SiteEncrypt.config(), http_pool :: pid, force_renewal: boolean) ::
-              :new_cert | :no_change | :error
+  @callback certify(SiteEncrypt.config(), pid, force_renewal: boolean) :: :ok | :error
 
   def start_link(config) do
     Parent.GenServer.start_link(
@@ -53,7 +52,7 @@ defmodule SiteEncrypt.Certification.Job do
       :error ->
         Logger.error("Error obtaining certificate for #{hd(config.domains)}")
 
-      :new_cert ->
+      :ok ->
         post_certify(config)
         valid_until = SiteEncrypt.Certification.Periodic.cert_valid_until(config)
         renewal_date = SiteEncrypt.Certification.Periodic.renewal_date(config)
@@ -62,9 +61,6 @@ defmodule SiteEncrypt.Certification.Job do
           "Certificate successfully obtained! It is valid until #{valid_until}. ",
           "Next renewal is scheduled for #{renewal_date}. "
         ])
-
-      :no_change ->
-        :ok
     end
   end
 

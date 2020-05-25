@@ -25,7 +25,6 @@ defmodule SiteEncrypt.Certification.Certbot do
   @impl SiteEncrypt.Certification.Job
   def certify(config, _http_pool, opts) do
     ensure_folders(config)
-    original_keys_sha = keys_sha(config)
 
     result =
       if match?({:ok, _}, pems(config)), do: renew(config, opts), else: certonly(config, opts)
@@ -33,7 +32,7 @@ defmodule SiteEncrypt.Certification.Certbot do
     case result do
       {output, 0} ->
         SiteEncrypt.log(config, output)
-        if keys_sha(config) != original_keys_sha, do: :new_cert, else: :no_change
+        :ok
 
       {output, _error} ->
         Logger.error(output)
@@ -118,17 +117,4 @@ defmodule SiteEncrypt.Certification.Certbot do
   defp keyfile(config), do: Path.join(keys_folder(config), "privkey.pem")
   defp certfile(config), do: Path.join(keys_folder(config), "cert.pem")
   defp cacertfile(config), do: Path.join(keys_folder(config), "chain.pem")
-
-  defp keys_sha(config) do
-    case pems(config) do
-      :error ->
-        nil
-
-      {:ok, keys} ->
-        :crypto.hash(
-          :md5,
-          keys |> Keyword.values() |> Enum.join()
-        )
-    end
-  end
 end
