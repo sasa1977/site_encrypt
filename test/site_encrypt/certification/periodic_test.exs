@@ -1,5 +1,5 @@
 defmodule SiteEncrypt.Certification.PeriodicTest do
-  use SiteEncrypt.Phoenix.Test, endpoint: __MODULE__.TestEndpoint
+  use SiteEncrypt.Phoenix.Test, endpoint: __MODULE__.TestEndpoint, async: true
   use ExUnitProperties
 
   import StreamData
@@ -84,10 +84,10 @@ defmodule SiteEncrypt.Certification.PeriodicTest do
     def init(_key, config) do
       {:ok,
        config
-       |> SiteEncrypt.Phoenix.configure_https(port: 4001)
+       |> SiteEncrypt.Phoenix.configure_https(port: 5001)
        |> Keyword.merge(
-         url: [scheme: "https", host: "localhost", port: 4001],
-         http: [port: 4000]
+         url: [scheme: "https", host: "localhost", port: 5001],
+         http: [port: 5000]
        )}
     end
 
@@ -97,12 +97,12 @@ defmodule SiteEncrypt.Certification.PeriodicTest do
         directory_url: internal(),
         domains: ["localhost", "foo.localhost"],
         emails: ["admin@foo.bar"],
-        db_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("db"),
-        backup: Path.join(System.tmp_dir!(), "site_encrypt_backup.tgz"),
+        db_folder: Application.app_dir(:site_encrypt, "priv") |> Path.join("periodic_test"),
+        backup: Path.join(System.tmp_dir!(), "periodic_site_encrypt_backup.tgz"),
         client: :native
       )
     end
 
-    defp internal, do: {:internal, port: 4003}
+    defp internal, do: {:internal, port: 5002}
   end
 end

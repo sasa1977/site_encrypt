@@ -18,7 +18,8 @@ defmodule SiteEncrypt.Acme.Server.Standalone do
         scheme: :https,
         key: {:PrivateKeyInfo, X509.PrivateKey.to_der(key, wrap: true)},
         cert: X509.Certificate.to_der(cert),
-        transport_options: [num_acceptors: 1]
+        transport_options: [num_acceptors: 1],
+        ref: :"#{__MODULE__}_#{port}"
       ] ++ adapter_opts
 
     SiteEncrypt.Acme.Server.child_spec(

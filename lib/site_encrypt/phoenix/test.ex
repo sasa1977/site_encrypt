@@ -1,7 +1,10 @@
 defmodule SiteEncrypt.Phoenix.Test do
   defmacro __using__(opts) do
-    quote bind_quoted: [endpoint: Keyword.fetch!(opts, :endpoint)] do
-      use ExUnit.Case, async: false
+    quote bind_quoted: [
+            endpoint: Keyword.fetch!(opts, :endpoint),
+            async: Keyword.get(opts, :async, false)
+          ] do
+      use ExUnit.Case, async: async
 
       setup do
         endpoint = unquote(endpoint)

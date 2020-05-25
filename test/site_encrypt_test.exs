@@ -1,7 +1,7 @@
-for client <- [:native, :certbot],
+for {client, index} <- Enum.with_index([:native, :certbot]),
     client != :certbot or System.get_env("CI") == "true" do
   defmodule Module.concat(SiteEncrypt, "#{Macro.camelize(to_string(client))}Test") do
-    use SiteEncrypt.Phoenix.Test, endpoint: __MODULE__.TestEndpoint
+    use SiteEncrypt.Phoenix.Test, endpoint: __MODULE__.TestEndpoint, async: true
     use ExUnitProperties
     import SiteEncrypt.Phoenix.Test
     alias __MODULE__.TestEndpoint
@@ -42,21 +42,23 @@ for client <- [:native, :certbot],
       use Phoenix.Endpoint, otp_app: :site_encrypt
       use SiteEncrypt.Phoenix
 
+      @base_port 4000 + 100 * index
+
       @impl Phoenix.Endpoint
       def init(_key, config) do
         {:ok,
          config
-         |> SiteEncrypt.Phoenix.configure_https(port: 4001)
+         |> SiteEncrypt.Phoenix.configure_https(port: @base_port + 1)
          |> Keyword.merge(
-           url: [scheme: "https", host: "localhost", port: 4001],
-           http: [port: 4000]
+           url: [scheme: "https", host: "localhost", port: @base_port + 1],
+           http: [port: @base_port]
          )}
       end
 
       @impl SiteEncrypt
       def certification do
         SiteEncrypt.configure(
-          directory_url: internal(),
+          directory_url: {:internal, port: @base_port + 2},
           domains: ["localhost", "foo.localhost"],
           emails: ["admin@foo.bar"],
           db_folder:
@@ -64,12 +66,10 @@ for client <- [:native, :certbot],
               :site_encrypt,
               Path.join(["priv", "site_encrypt_#{unquote(client)}"])
             ),
-          backup: Path.join(System.tmp_dir!(), "site_encrypt_backup.tgz"),
+          backup: Path.join(System.tmp_dir!(), "site_encrypt_#{unquote(client)}_backup.tgz"),
           client: unquote(client)
         )
       end
-
-      defp internal, do: {:internal, port: 4003}
     end
   end
 end
