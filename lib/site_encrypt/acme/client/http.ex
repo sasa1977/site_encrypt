@@ -16,13 +16,12 @@ defmodule SiteEncrypt.Acme.Client.Http do
   def request(pool, method, url, headers, body) do
     uri = URI.parse(url)
     host = URI.to_string(%URI{scheme: uri.scheme, host: uri.host, port: uri.port})
-    connection = GenServer.call(pool, {:connection, host})
 
-    method = method |> to_string() |> String.upcase()
-    path = URI.to_string(%URI{path: uri.path, query: uri.query})
-
-    with {:ok, response} <-
-           GenServer.call(connection, {:request, method, path, headers, body}, :timer.minutes(1)) do
+    with {:ok, connection} <- GenServer.call(pool, {:connection, host}),
+         method = method |> to_string() |> String.upcase(),
+         path = URI.to_string(%URI{path: uri.path, query: uri.query}),
+         req = {:request, method, path, headers, body},
+         {:ok, response} <- GenServer.call(connection, req, :timer.minutes(1)) do
       headers = Enum.map(response.headers, fn {key, val} -> {String.downcase(key), val} end)
       {:ok, %{response | headers: headers}}
     end
@@ -35,19 +34,14 @@ defmodule SiteEncrypt.Acme.Client.Http do
   def handle_call({:connection, host}, _client, opts),
     do: {:reply, connection_pid(host, opts), opts}
 
+  @impl GenServer
+  # happens if connection couldn't be established during conn init
+  def handle_info({:EXIT, _pid, %Mint.TransportError{reason: :econnrefused}}, opts),
+    do: {:noreply, opts}
+
   defp connection_pid(host, opts) do
-    case Parent.GenServer.child_pid(host) do
-      {:ok, pid} ->
-        pid
-
-      :error ->
-        {:ok, pid} =
-          Parent.GenServer.start_child(%{
-            id: host,
-            start: {Connection, :start_link, [host, opts]}
-          })
-
-        pid
+    with :error <- Parent.GenServer.child_pid(host) do
+      Parent.GenServer.start_child(%{id: host, start: {Connection, :start_link, [host, opts]}})
     end
   end
 
@@ -65,8 +59,10 @@ defmodule SiteEncrypt.Acme.Client.Http do
       uri = URI.parse(url)
       {scheme, opts} = parse_scheme(uri.scheme, opts)
 
-      with {:ok, conn} <- Mint.HTTP.connect(scheme, uri.host, uri.port, opts),
-           do: {:ok, %{conn: conn, requests: %{}}}
+      case Mint.HTTP.connect(scheme, uri.host, uri.port, opts) do
+        {:ok, conn} -> {:ok, %{conn: conn, requests: %{}}}
+        {:error, reason} -> {:stop, reason}
+      end
     end
 
     @impl GenServer

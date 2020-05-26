@@ -8,18 +8,7 @@ defmodule SiteEncrypt.Phoenix.Test do
 
       setup do
         endpoint = unquote(endpoint)
-
-        SiteEncrypt.Phoenix.restart_site(endpoint, fn ->
-          ~w/db_folder backup/a
-          |> Stream.map(&Map.fetch!(endpoint.certification(), &1))
-          |> Stream.reject(&is_nil/1)
-          |> Enum.each(&File.rm_rf/1)
-
-          app = Mix.Project.config() |> Keyword.fetch!(:app)
-          endpoint_config = Application.get_env(app, endpoint, [])
-          Application.put_env(app, endpoint, Keyword.put(endpoint_config, :server, true))
-          on_exit(fn -> Application.put_env(app, endpoint, endpoint_config) end)
-        end)
+        SiteEncrypt.Phoenix.Test.clean_restart(endpoint)
 
         self_signed_cert = SiteEncrypt.Phoenix.Test.get_cert(endpoint)
 
@@ -47,6 +36,20 @@ defmodule SiteEncrypt.Phoenix.Test do
         assert domains == SiteEncrypt.Registry.config(unquote(endpoint)).domains
       end
     end
+  end
+
+  def clean_restart(endpoint) do
+    SiteEncrypt.Phoenix.restart_site(endpoint, fn ->
+      ~w/db_folder backup/a
+      |> Stream.map(&Map.fetch!(endpoint.certification(), &1))
+      |> Stream.reject(&is_nil/1)
+      |> Enum.each(&File.rm_rf/1)
+
+      app = Mix.Project.config() |> Keyword.fetch!(:app)
+      endpoint_config = Application.get_env(app, endpoint, [])
+      Application.put_env(app, endpoint, Keyword.put(endpoint_config, :server, true))
+      ExUnit.Callbacks.on_exit(fn -> Application.put_env(app, endpoint, endpoint_config) end)
+    end)
   end
 
   @spec get_cert(module) :: X509.Certificate.t()

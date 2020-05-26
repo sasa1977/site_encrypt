@@ -42,6 +42,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y certbot
 
+      - run: docker run -d -e "PEBBLE_VA_NOSLEEP=1" --net=host letsencrypt/pebble /usr/bin/pebble -strict
+
       - run: mix deps.get
 
       - name: Compile project

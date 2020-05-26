@@ -30,8 +30,7 @@ defmodule SiteEncrypt.Certification.Job do
 
   @impl GenServer
   def init(config) do
-    opts =
-      if match?({:internal, _}, config.directory_url), do: [verify_server_cert: false], else: []
+    opts = [verify_server_cert: not SiteEncrypt.local_ca?(config)]
 
     {:ok, http_pool} = Parent.GenServer.start_child({SiteEncrypt.Acme.Client.Http, opts})
 

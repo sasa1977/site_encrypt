@@ -84,10 +84,10 @@ defmodule SiteEncrypt.Certification.PeriodicTest do
     def init(_key, config) do
       {:ok,
        config
-       |> SiteEncrypt.Phoenix.configure_https(port: 5001)
+       |> SiteEncrypt.Phoenix.configure_https(port: 4201)
        |> Keyword.merge(
-         url: [scheme: "https", host: "localhost", port: 5001],
-         http: [port: 5000]
+         url: [scheme: "https", host: "localhost", port: 4201],
+         http: [port: 4200]
        )}
     end
 
@@ -103,6 +103,6 @@ defmodule SiteEncrypt.Certification.PeriodicTest do
       )
     end
 
-    defp internal, do: {:internal, port: 5002}
+    defp internal, do: {:internal, port: 4202}
   end
 end

@@ -36,7 +36,17 @@ defmodule SiteEncrypt do
     ]
   end
 
+  @spec log(config, iodata) :: :ok
   def log(config, chardata_or_fun), do: Logger.log(config.log_level, chardata_or_fun)
+
+  @spec directory_url(config) :: String.t()
+  def directory_url(config) do
+    with {:internal, opts} <- config.directory_url,
+         do: "https://localhost:#{Keyword.fetch!(opts, :port)}/directory"
+  end
+
+  @spec local_ca?(config) :: boolean
+  def local_ca?(config), do: URI.parse(directory_url(config)).host == "localhost"
 
   defmacro configure(opts) do
     quote do

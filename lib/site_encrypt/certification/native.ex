@@ -28,18 +28,15 @@ defmodule SiteEncrypt.Certification.Native do
   @impl Job
   def full_challenge(_config, _challenge), do: raise("shouldn't land here")
 
-  defp internal_ca?(config), do: match?({:internal, _}, config.directory_url)
-
   defp new_account(config, http_pool) do
     SiteEncrypt.log(config, "Creating new ACME account for domain #{hd(config.domains)}")
-    directory_url = directory_url(config)
 
     session =
       SiteEncrypt.Acme.Client.new_account(
         http_pool,
-        directory_url,
-        [config.emails],
-        key_size: if(internal_ca?(config), do: 1024, else: 2048)
+        SiteEncrypt.directory_url(config),
+        config.emails,
+        key_size: if(SiteEncrypt.local_ca?(config), do: 1024, else: 2048)
       )
 
     store_account_key!(config, session.account_key)
@@ -47,7 +44,7 @@ defmodule SiteEncrypt.Certification.Native do
   end
 
   defp new_cert(config, http_pool, account_key) do
-    directory_url = directory_url(config)
+    directory_url = SiteEncrypt.directory_url(config)
     session = SiteEncrypt.Acme.Client.for_existing_account(http_pool, directory_url, account_key)
     create_certificate(config, session)
   end
@@ -60,8 +57,8 @@ defmodule SiteEncrypt.Certification.Native do
       SiteEncrypt.Acme.Client.create_certificate(session, %{
         id: config.id,
         domains: config.domains,
-        poll_delay: if(internal_ca?(config), do: 50, else: :timer.seconds(2)),
-        key_size: if(internal_ca?(config), do: 1024, else: 2048),
+        poll_delay: if(SiteEncrypt.local_ca?(config), do: 50, else: :timer.seconds(2)),
+        key_size: if(SiteEncrypt.local_ca?(config), do: 1024, else: 2048),
         register_challenge: &SiteEncrypt.Registry.register_challenge!(id, &1, &2),
         await_challenge: fn ->
           receive do
@@ -113,15 +110,10 @@ defmodule SiteEncrypt.Certification.Native do
       config.db_folder,
       "native",
       "authorities",
-      case URI.parse(directory_url(config)) do
+      case URI.parse(SiteEncrypt.directory_url(config)) do
         %URI{host: host, port: 443} -> host
         %URI{host: host, port: port} -> "#{host}_#{port}"
       end
     ])
-  end
-
-  defp directory_url(config) do
-    with {:internal, opts} <- config.directory_url,
-         do: "https://localhost:#{Keyword.fetch!(opts, :port)}/directory"
   end
 end

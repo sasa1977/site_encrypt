@@ -90,7 +90,7 @@ defmodule SiteEncrypt.Certification.Certbot do
   defp common_args(config, opts) do
     ~w(
       -m #{Enum.join(config.emails, " ")}
-      --server #{directory_url(config.directory_url)}
+      --server #{SiteEncrypt.directory_url(config)}
       --work-dir #{work_folder(config)}
       --config-dir #{config_folder(config)}
       --logs-dir #{log_folder(config)}
@@ -99,11 +99,6 @@ defmodule SiteEncrypt.Certification.Certbot do
       #{unless Keyword.get(opts, :verify_server_cert, true), do: "--no-verify-ssl"}
     )
   end
-
-  defp directory_url({:internal, opts}),
-    do: "https://localhost:#{Keyword.fetch!(opts, :port)}/directory"
-
-  defp directory_url(directory_url), do: directory_url
 
   defp domain_params(config), do: Enum.map(config.domains, &"-d #{&1}")
 
