@@ -149,7 +149,7 @@ defmodule SiteEncrypt do
       |> Map.put_new(:backup, nil)
       |> Map.put_new(:id, __MODULE__)
       |> Map.merge(%{
-        mode: if(Mix.env() == :test, do: :manual, else: :auto),
+        mode: if(unquote(Mix.env()) == :test, do: :manual, else: :auto),
         callback: __MODULE__
       })
     end
