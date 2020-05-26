@@ -1,5 +1,7 @@
 # SiteEncrypt
 
+[![hex.pm](https://img.shields.io/hexpm/v/parent.svg?style=flat-square)](https://hex.pm/packages/site_encrypt)
+[![hexdocs.pm](https://img.shields.io/badge/docs-latest-green.svg?style=flat-square)](https://hexdocs.pm/site_encrypt/)
 ![Build Status](https://github.com/sasa1977/site_encrypt/workflows/site_encrypt/badge.svg)
 
 This project aims to provide integrated certification via [Let's encrypt](https://letsencrypt.org/) for sites implemented in Elixir.
@@ -27,7 +29,7 @@ A basic demo Phoenix project is available [here](./demos/phoenix).
       defp deps do
         [
           # ...
-          {:site_encrypt, github: "sasa1977/site_encrypt"}
+          {:site_encrypt, "~> 0.1.0"}
         ]
       end
     end

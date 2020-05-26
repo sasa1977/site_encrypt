@@ -11,7 +11,8 @@ defmodule SiteEncrypt.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       dialyzer: [plt_add_deps: :transitive, remove_defaults: [:unknown]],
-      docs: docs()
+      docs: docs(),
+      package: package()
     ]
   end
 
@@ -46,6 +47,21 @@ defmodule SiteEncrypt.MixProject do
       extras: ["README.md", "CHANGELOG.md"],
       source_url: "https://github.com/sasa1977/site_encrypt/",
       source_ref: @version
+    ]
+  end
+
+  defp package() do
+    [
+      description: "Integrated certification via Let's encrypt for Elixir-powered sites",
+      maintainers: ["Saša Jurić"],
+      licenses: ["MIT"],
+      links: %{
+        "Github" => "https://github.com/sasa1977/site_encrypt",
+        "Changelog" =>
+          "https://github.com/sasa1977/site_encrypt/blob/#{@version}/CHANGELOG.md##{
+            String.replace(@version, ".", "")
+          }"
+      }
     ]
   end
 end
