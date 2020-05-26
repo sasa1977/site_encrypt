@@ -21,17 +21,17 @@ defmodule SiteEncrypt.MixProject do
 
   defp deps do
     [
-      {:parent, "~> 0.9"},
-      {:plug_cowboy, "~> 2.2", optional: true},
-      {:plug, "~> 1.7", optional: true},
-      {:phoenix, "~> 1.5", optional: true},
+      {:castore, "~> 0.1"},
+      {:dialyxir, "~> 1.0", runtime: false},
       {:jason, "~> 1.0"},
       {:jose, "~> 1.10"},
-      {:x509, "~> 0.3"},
-      {:stream_data, "~> 0.1", only: [:dev, :test]},
-      {:dialyxir, "~> 1.0", runtime: false},
       {:mint, "~> 1.1"},
-      {:castore, "~> 0.1"}
+      {:parent, "~> 0.9"},
+      {:phoenix, "~> 1.5", optional: true},
+      {:plug_cowboy, "~> 2.2", optional: true},
+      {:plug, "~> 1.7", optional: true},
+      {:stream_data, "~> 0.1", only: [:dev, :test]},
+      {:x509, "~> 0.3"}
     ]
   end
 end
