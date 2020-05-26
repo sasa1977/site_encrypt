@@ -1,22 +1,29 @@
 defmodule SiteEncrypt.AcmeChallenge do
+  @moduledoc false
   @behaviour Plug
+  alias SiteEncrypt.Registry
 
   @impl Plug
-  def init(config_mod), do: config_mod
+  def init(id), do: id
 
   @impl Plug
-  def call(%{request_path: "/.well-known/acme-challenge/" <> challenge} = conn, config_mod) do
+  def call(%{request_path: "/.well-known/acme-challenge/" <> challenge} = conn, id) do
     conn
-    |> Plug.Conn.send_file(200, challenge_file(config_mod, challenge))
+    |> Plug.Conn.send_resp(200, challenge_response(id, challenge))
     |> Plug.Conn.halt()
   end
 
   def call(conn, _endpoint), do: conn
 
-  defp challenge_file(config_mod, challenge) do
-    SiteEncrypt.Certbot.challenge_file(
-      SiteEncrypt.Registry.config(config_mod).base_folder,
-      challenge
-    )
+  defp challenge_response(id, challenge) do
+    case Registry.get_challenge(id, challenge) do
+      {pid, key_thumbprint} ->
+        send(pid, {:got_challenge, id})
+        "#{challenge}.#{key_thumbprint}"
+
+      nil ->
+        config = Registry.config(id)
+        SiteEncrypt.client(config).full_challenge(config, challenge)
+    end
   end
 end

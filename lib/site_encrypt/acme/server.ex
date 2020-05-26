@@ -1,5 +1,6 @@
-defmodule AcmeServer do
-  alias AcmeServer.Account
+defmodule SiteEncrypt.Acme.Server do
+  @moduledoc false
+  alias SiteEncrypt.Acme.Server.Account
 
   @type site :: String.t()
   @type dns :: %{String.t() => String.t()}
@@ -19,14 +20,10 @@ defmodule AcmeServer do
 
   @spec start_link(start_opts) :: Supervisor.on_start()
   def start_link(opts) do
-    # The supervision subtree of an ACME server instance. This supervisor sits
-    # in the client app tree, which supports proper shutdown. If this supervisor
-    # is stopped, all the processes associated with this ACME server instance
-    # are also terminated.
     Supervisor.start_link(
       [
-        {AcmeServer.Db, Keyword.fetch!(opts, :config)},
-        {AcmeServer.Challenges, Keyword.fetch!(opts, :config)},
+        {SiteEncrypt.Acme.Server.Db, Keyword.fetch!(opts, :config)},
+        {SiteEncrypt.Acme.Server.Challenges, Keyword.fetch!(opts, :config)},
         Keyword.fetch!(opts, :endpoint)
       ],
       strategy: :one_for_one
@@ -67,8 +64,19 @@ defmodule AcmeServer do
   def handle(config, :head, "/new-nonce", _body), do: respond(200, [nonce_header(config)])
 
   def handle(config, :post, "/new-account", body) do
-    account = Account.create(config, client_key(decode_request(config, body)))
-    respond_json(201, [nonce_header(config)], account)
+    request = decode_request(config, body)
+
+    account =
+      case Account.fetch(config, client_key(request)) do
+        {:ok, account} -> account
+        :error -> Account.create(config, client_key(request))
+      end
+
+    respond_json(
+      201,
+      [{"Location", account.location}, nonce_header(config)],
+      %{status: :valid, contact: Map.get(request.payload, "contact", [])}
+    )
   end
 
   def handle(config, :post, "/new-order", body) do
@@ -96,15 +104,17 @@ defmodule AcmeServer do
     )
   end
 
-  def handle(config, :post, "/authorizations/" <> order_path, _body) do
+  def handle(config, :post, "/authorizations/" <> order_path, body) do
+    _request = decode_request(config, body)
+
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(config, account_id, order_id)
+    order = SiteEncrypt.Acme.Server.Account.get_order!(config, account_id, order_id)
 
     respond_json(
       200,
       [nonce_header(config)],
       %{
-        status: order.status,
+        status: with(:ready <- order.status, do: :valid),
         identifier: %{type: "dns", value: "localhost"},
         challenges: [http_challenge_data(config, account_id, order)]
       }
@@ -114,10 +124,10 @@ defmodule AcmeServer do
   def handle(config, :post, "/challenge/http/" <> order_path, body) do
     request = decode_request(config, body)
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(config, account_id, order_id)
+    order = SiteEncrypt.Acme.Server.Account.get_order!(config, account_id, order_id)
     authorizations_url = "#{config.site}/authorizations/#{order_path}"
 
-    AcmeServer.Challenges.start_challenge(config, %{
+    SiteEncrypt.Acme.Server.Challenges.start_challenge(config, %{
       dns: config.dns,
       account_id: account_id,
       order: order,
@@ -127,7 +137,7 @@ defmodule AcmeServer do
     respond_json(
       200,
       [nonce_header(config), {"Link", "<#{authorizations_url}>;rel=\"up\""}],
-      http_challenge_data(config, account_id, order)
+      http_challenge_data(config, account_id, order, status: :processing)
     )
   end
 
@@ -136,31 +146,32 @@ defmodule AcmeServer do
     csr = request.payload |> Map.fetch!("csr") |> Base.url_decode64!(padding: false)
 
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(config, account_id, order_id)
+    order = SiteEncrypt.Acme.Server.Account.get_order!(config, account_id, order_id)
 
-    cert = AcmeServer.Crypto.sign_csr!(csr, order.domains)
-    updated_order = %{order | cert: cert}
-    AcmeServer.Account.update_order(config, account_id, updated_order)
+    cert = SiteEncrypt.Acme.Server.Crypto.sign_csr!(csr, order.domains)
+    updated_order = %{order | cert: cert, status: :valid}
+    SiteEncrypt.Acme.Server.Account.update_order(config, account_id, updated_order)
 
     respond_json(200, [nonce_header(config)], order_data(config, account_id, updated_order))
   end
 
   def handle(config, :post, "/order/" <> order_path, _body) do
     {account_id, order_id} = decode_order_path(order_path)
-    order = AcmeServer.Account.get_order!(config, account_id, order_id)
+    order = SiteEncrypt.Acme.Server.Account.get_order!(config, account_id, order_id)
     respond_json(200, [nonce_header(config)], order_data(config, account_id, order))
   end
 
-  def handle(config, :post, "/cert/" <> order_path, _body) do
+  def handle(config, :post, "/cert/" <> order_path, body) do
+    _ = decode_request(config, body)
     {account_id, order_id} = decode_order_path(order_path)
-    certificate = AcmeServer.Account.get_order!(config, account_id, order_id).cert
+    certificate = SiteEncrypt.Acme.Server.Account.get_order!(config, account_id, order_id).cert
     respond(200, [nonce_header(config)], certificate)
   end
 
-  defp http_challenge_data(config, account_id, order) do
+  defp http_challenge_data(config, account_id, order, opts \\ []) do
     %{
       type: "http-01",
-      status: order.status,
+      status: Keyword.get(opts, :status, with(:ready <- order.status, do: :valid)),
       url: "#{config.site}/challenge/http/#{order_path(account_id, order.id)}",
       token: order.token
     }
@@ -189,16 +200,17 @@ defmodule AcmeServer do
     do: respond(status, [{"Content-Type", "application/json"} | headers], Jason.encode!(data))
 
   defp nonce_header(config) do
-    {"Replay-Nonce", AcmeServer.Nonce.new(config) |> to_string() |> Base.encode64(padding: false)}
+    {"Replay-Nonce",
+     SiteEncrypt.Acme.Server.Nonce.new(config) |> to_string() |> Base.encode64(padding: false)}
   end
 
   defp decode_request(config, body) do
-    {:ok, request} = AcmeServer.JWS.decode(body)
+    {:ok, request} = SiteEncrypt.Acme.Server.JWS.decode(body)
     verify_nonce!(config, request)
     request
   end
 
-  defp client_key(request), do: Map.fetch!(request.protected, "jwk")
+  defp client_key(request), do: request.jwk
 
   defp verify_nonce!(config, request) do
     nonce =
@@ -207,12 +219,12 @@ defmodule AcmeServer do
       |> Base.decode64!(padding: false)
       |> String.to_integer()
 
-    AcmeServer.Nonce.verify!(config, nonce)
+    SiteEncrypt.Acme.Server.Nonce.verify!(config, nonce)
   end
 
   defp decode_order_path(order_path) do
     [account_id, order_id] = String.split(order_path, "/")
-    {String.to_integer(account_id), String.to_integer(order_id)}
+    {account_id, String.to_integer(order_id)}
   end
 
   defp create_order(config, request, domains) do
@@ -222,6 +234,6 @@ defmodule AcmeServer do
         :error -> Account.create(config, client_key(request))
       end
 
-    {account, AcmeServer.Account.new_order(config, account, domains)}
+    {account, SiteEncrypt.Acme.Server.Account.new_order(config, account, domains)}
   end
 end

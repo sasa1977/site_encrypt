@@ -1,4 +1,6 @@
-defmodule AcmeServer.Plug do
+defmodule SiteEncrypt.Acme.Server.Plug do
+  @moduledoc false
+
   @behaviour Plug
   import Plug.Conn
 
@@ -7,7 +9,7 @@ defmodule AcmeServer.Plug do
 
   @impl Plug
   def call(conn, config) do
-    case AcmeServer.resource_path(config, conn.request_path) do
+    case SiteEncrypt.Acme.Server.resource_path(config, conn.request_path) do
       {:ok, path} -> handle_request(conn, config, path) |> halt()
       :error -> conn
     end
@@ -16,7 +18,7 @@ defmodule AcmeServer.Plug do
   defp handle_request(conn, config, path) do
     method = method(conn.method)
     {:ok, body, conn} = read_body(conn)
-    acme_response = AcmeServer.handle(config, method, path, body)
+    acme_response = SiteEncrypt.Acme.Server.handle(config, method, path, body)
     send_response(conn, acme_response)
   end
 

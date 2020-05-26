@@ -1,14 +1,18 @@
 defmodule SiteEncrypt.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+
   def project do
     [
       app: :site_encrypt,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      dialyzer: [plt_add_deps: :transitive, remove_defaults: [:unknown]]
+      dialyzer: [plt_add_deps: :transitive, remove_defaults: [:unknown]],
+      docs: docs(),
+      package: package()
     ]
   end
 
@@ -21,15 +25,43 @@ defmodule SiteEncrypt.MixProject do
 
   defp deps do
     [
-      {:parent, "~> 0.9"},
-      {:plug_cowboy, "~> 2.2", optional: true},
-      {:plug, "~> 1.7", optional: true},
-      {:phoenix, "~> 1.5", optional: true},
+      {:castore, "~> 0.1"},
+      {:dialyxir, "~> 1.0", runtime: false},
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
       {:jason, "~> 1.0"},
       {:jose, "~> 1.10"},
-      {:x509, "~> 0.3"},
+      {:mint, "~> 1.1"},
+      {:nimble_options, "~> 0.2"},
+      {:parent, "~> 0.9"},
+      {:phoenix, "~> 1.5", optional: true},
+      {:plug_cowboy, "~> 2.2", optional: true},
+      {:plug, "~> 1.7", optional: true},
       {:stream_data, "~> 0.1", only: [:dev, :test]},
-      {:dialyxir, "~> 1.0", runtime: false}
+      {:x509, "~> 0.3"}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md", "CHANGELOG.md"],
+      source_url: "https://github.com/sasa1977/site_encrypt/",
+      source_ref: @version
+    ]
+  end
+
+  defp package() do
+    [
+      description: "Integrated certification via Let's encrypt for Elixir-powered sites",
+      maintainers: ["Saša Jurić"],
+      licenses: ["MIT"],
+      links: %{
+        "Github" => "https://github.com/sasa1977/site_encrypt",
+        "Changelog" =>
+          "https://github.com/sasa1977/site_encrypt/blob/#{@version}/CHANGELOG.md##{
+            String.replace(@version, ".", "")
+          }"
+      }
     ]
   end
 end

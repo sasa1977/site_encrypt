@@ -1,8 +1,10 @@
-defmodule AcmeServer.Crypto do
+defmodule SiteEncrypt.Acme.Server.Crypto do
+  @moduledoc false
+
   alias X509.{CSR, PrivateKey, PublicKey, Certificate}
   alias X509.Certificate.Extension
 
-  @spec sign_csr!(binary(), AcmeServer.domains()) :: binary() | no_return()
+  @spec sign_csr!(binary(), SiteEncrypt.Acme.Server.domains()) :: binary() | no_return()
   def sign_csr!(der, domains) do
     csr = CSR.from_der!(der)
     unless CSR.valid?(csr), do: raise("CSR validation failed")
@@ -18,7 +20,7 @@ defmodule AcmeServer.Crypto do
   def self_signed_chain(domains) do
     {ca_key, ca_cert} = ca_key_and_cert()
 
-    server_key = PrivateKey.new_rsa(4096)
+    server_key = PrivateKey.new_rsa(1024)
 
     server_cert =
       server_key
@@ -33,7 +35,7 @@ defmodule AcmeServer.Crypto do
   end
 
   defp ca_key_and_cert() do
-    ca_key = PrivateKey.new_rsa(4096)
+    ca_key = PrivateKey.new_rsa(1024)
     ca_cert = Certificate.self_signed(ca_key, "/O=Site Encrypt/CN=Acme Server CA", template: :ca)
     {ca_key, ca_cert}
   end

@@ -1,58 +1,87 @@
 defmodule SiteEncrypt.Phoenix.Test do
-  import ExUnit.Assertions
-  alias SiteEncrypt.{Certifier, Registry}
+  @moduledoc """
+  Helper for testing the certification.
 
-  @spec verify_certification(SiteEncrypt.id(), [DateTime.t()]) :: :ok
-  def verify_certification(id, expected_times) do
-    config = Registry.config(id)
+  ## Usage
 
-    # stop the site, remove cert folders, and restart the site
-    root_pid = Registry.whereis(id, :root)
-    Supervisor.terminate_child(root_pid, :site)
-    Enum.each(~w/base_folder cert_folder backup/a, &File.rm_rf(Map.fetch!(config, &1)))
-    Supervisor.restart_child(root_pid, :site)
-
-    # self-signed certificate
-    first_cert = get_cert(id)
-
-    # obtains the first certificate irrespective of the time
-    log = capture_log(fn -> assert Certifier.tick(id, DateTime.utc_now()) == :ok end)
-
-    assert log =~ "Obtained new certificate for localhost"
-
-    second_cert = get_cert(id)
-    assert second_cert != first_cert
-
-    Enum.each(
-      expected_times,
-      fn time ->
-        # attempts to renew the certificate at midnight UTC
-        log = capture_log(fn -> assert Certifier.tick(id, time) == :ok end)
-
-        assert log =~ "The following certs are not due for renewal yet"
-        assert get_cert(id) == second_cert
+      defmodule MyEndpoint.CertificationTest do
+        use SiteEncrypt.Phoenix.Test, endpoint: MyEndpoint
       end
-    )
-  end
 
-  def get_cert(id) do
-    config = Registry.config(id)
-    {:ok, socket} = :ssl.connect('localhost', https_port(config), [], :timer.seconds(5))
-    {:ok, der_cert} = :ssl.peercert(socket)
-    :ssl.close(socket)
-    der_cert
-  end
+  This will generate a single test which does the following:
 
-  def capture_log(fun) do
-    level = Logger.level()
+  1. Stops the endpoint, and removes the db_folder and the backup.
+  2. Restarts the endpoint, temporarily setting `server: true`.
+  3. Waits for the certification to finish.
+  4. Verifies that the site is serving the traffic using the new certificate.
 
-    try do
-      Logger.configure(level: :debug)
-      ExUnit.CaptureLog.capture_log(fun)
-    after
-      Logger.configure(level: level)
+  For this to work, you need to use the internal ACME server during tests.
+  Refer to `SiteEncrypt.configure/1` for details.
+  """
+
+  @doc false
+  defmacro __using__(opts) do
+    quote bind_quoted: [
+            endpoint: Keyword.fetch!(opts, :endpoint),
+            async: Keyword.get(opts, :async, false)
+          ] do
+      use ExUnit.Case, async: async
+
+      setup do
+        endpoint = unquote(endpoint)
+        SiteEncrypt.Phoenix.Test.clean_restart(endpoint)
+
+        self_signed_cert = SiteEncrypt.Phoenix.Test.get_cert(endpoint)
+
+        utc_now = DateTime.utc_now()
+        midnight = %DateTime{utc_now | hour: 0, minute: 0, second: 0}
+        assert SiteEncrypt.Certification.Periodic.tick(endpoint, midnight) == :ok
+        new_cert = SiteEncrypt.Phoenix.Test.get_cert(endpoint)
+        refute new_cert == self_signed_cert
+
+        :ok
+      end
+
+      test "certification" do
+        require X509.ASN1
+
+        cert = SiteEncrypt.Phoenix.Test.get_cert(unquote(endpoint))
+
+        domains =
+          cert
+          |> X509.Certificate.extension(:subject_alt_name)
+          |> X509.ASN1.extension(:extnValue)
+          |> Keyword.values()
+          |> Enum.map(&to_string/1)
+
+        assert domains == SiteEncrypt.Registry.config(unquote(endpoint)).domains
+      end
     end
   end
 
-  defp https_port(config), do: config.assigns.endpoint.config(:https) |> Keyword.fetch!(:port)
+  @doc false
+  def clean_restart(endpoint) do
+    SiteEncrypt.Phoenix.restart_site(endpoint, fn ->
+      ~w/db_folder backup/a
+      |> Stream.map(&Map.fetch!(endpoint.certification(), &1))
+      |> Stream.reject(&is_nil/1)
+      |> Enum.each(&File.rm_rf/1)
+
+      app = Mix.Project.config() |> Keyword.fetch!(:app)
+      endpoint_config = Application.get_env(app, endpoint, [])
+      Application.put_env(app, endpoint, Keyword.put(endpoint_config, :server, true))
+      ExUnit.Callbacks.on_exit(fn -> Application.put_env(app, endpoint, endpoint_config) end)
+    end)
+  end
+
+  @doc false
+  @spec get_cert(module) :: X509.Certificate.t()
+  def get_cert(endpoint) do
+    {:ok, socket} = :ssl.connect('localhost', https_port(endpoint), [], :timer.seconds(5))
+    {:ok, der_cert} = :ssl.peercert(socket)
+    :ssl.close(socket)
+    X509.Certificate.from_der!(der_cert)
+  end
+
+  defp https_port(endpoint), do: Keyword.fetch!(endpoint.config(:https), :port)
 end
