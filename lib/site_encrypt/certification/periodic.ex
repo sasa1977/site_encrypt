@@ -1,4 +1,6 @@
 defmodule SiteEncrypt.Certification.Periodic do
+  @moduledoc false
+
   def child_spec(config) do
     Periodic.child_spec(
       id: __MODULE__.Scheduler,

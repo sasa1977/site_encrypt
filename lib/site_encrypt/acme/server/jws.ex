@@ -1,4 +1,6 @@
 defmodule SiteEncrypt.Acme.Server.JWS do
+  @moduledoc false
+
   @spec decode(iodata()) :: {:ok, map()} | :error
   def decode(body) do
     data = Jason.decode!(body)

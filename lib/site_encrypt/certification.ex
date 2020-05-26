@@ -1,4 +1,5 @@
 defmodule SiteEncrypt.Certification do
+  @moduledoc false
   require Logger
   alias SiteEncrypt.Registry
   alias SiteEncrypt.Certification.Periodic

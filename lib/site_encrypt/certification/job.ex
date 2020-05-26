@@ -1,4 +1,6 @@
 defmodule SiteEncrypt.Certification.Job do
+  @moduledoc false
+
   use Parent.GenServer
   require Logger
 

@@ -1,6 +1,42 @@
 defmodule SiteEncrypt.Phoenix do
+  @moduledoc """
+  `SiteEncrypt` adapter for Phoenix endpoints.
+
+  ## Usage
+
+  1. Add `use SiteEncrypt.Phoenix` to your endpoint immediately after `use Phoenix.Endpoint`
+  2. Configure https via `configure_https/2`.
+  3. Add the implementation of `c:SiteEncrypt.certification/0` to the endpoint (the
+    `@behaviour SiteEncrypt` is injected when this module is used).
+
+  """
+
+  @doc false
   use Supervisor
 
+  @doc """
+  Merges paths to key and certificates to the `:https` configuration of the endpoint config.
+
+  Invoke this macro from `c:Phoenix.Endpoint.init/2` to complete the https configuration:
+
+      defmodule MyEndpoint do
+        # ...
+
+        @impl Phoenix.Endpoint
+        def init(_key, config) do
+          # this will merge key, cert, and chain into `:https` configuration from config.exs
+          {:ok, SiteEncrypt.Phoenix.configure_https(config)}
+
+          # to completely configure https from `init/2`, invoke:
+          #   SiteEncrypt.Phoenix.configure_https(config, port: 4001, ...)
+        end
+
+        # ...
+      end
+
+  The `options` are any valid adapter HTTPS options. For many great tips on configuring HTTPS for
+  production refer to the [Plug HTTPS guide](https://hexdocs.pm/plug/https.html#content).
+  """
   defmacro configure_https(config, https_opts \\ []) do
     quote bind_quoted: [config: config, https_opts: https_opts] do
       https_config =

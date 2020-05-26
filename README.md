@@ -4,172 +4,125 @@
 
 This project aims to provide integrated certification via [Let's encrypt](https://letsencrypt.org/) for sites implemented in Elixir.
 
-Integrated certification means that you don't need to run any other OS process in background. Start your site for the first time, and it will obtain the certificate, and restart the endpoint. The system will also periodically renew the certificate, and when the new certificate is obtained, the endpoint will again be restarted.
+Integrated certification means that you don't need to run any other OS process in background. Start your site for the first time, and the system will obtain the certificate, and periodically renew it before it expires.
 
 The target projects are small-to-medium Elixir based sites which don't sit behind reverse proxies such as nginx.
-
-In addition, the library ships with a basic ACME v2 server to facilitate local development without needing to start a bunch of docker images.
 
 ## Status
 
 - The library is tested in a [simple production](https://www.theerlangelist.com), where it has been constantly running since mid 2018.
+- Native Elixir client is very new, and not considered stable. If you prefer reliable behaviour, use the Certbot client. This will require installing [Certbot](https://certbot.eff.org/) >= 0.31
 - The API is not stable. Expect breaking changes in the future.
-- The documentation is non-existant.
-- The tests are basic.
 
-Use at your own peril :-)
-
-## Dependencies
-
-- [Certbot](https://certbot.eff.org/) >= 0.31 (ACME client used to obtain certificate)
-
-## Using with Phoenix
-
-### Local development
+## Quick start
 
 A basic demo Phoenix project is available [here](./demos/phoenix).
 
-First, you need to add the dependency to `mix.exs`:
+1. Add the dependency to `mix.exs`:
 
-```elixir
-defmodule PhoenixDemo.Mixfile do
-  # ...
-
-  defp deps do
-    [
+    ```elixir
+    defmodule PhoenixDemo.Mixfile do
       # ...
-      {:site_encrypt, github: "sasa1977/site_encrypt"}
-    ]
-  end
-end
-```
 
-Don't forget to invoke `mix.deps` after that.
+      defp deps do
+        [
+          # ...
+          {:site_encrypt, github: "sasa1977/site_encrypt"}
+        ]
+      end
+    end
+    ```
 
-Next, adapt your endpoint
+    Don't forget to invoke `mix.deps` after that.
 
-```elixir
-defmodule PhoenixDemo.Endpoint do
-  # ...
+1. Expand your endpoint
 
-  # add this after `use Phoenix.Endpoint`
-  use SiteEncrypt.Phoenix
+    ```elixir
+    defmodule PhoenixDemo.Endpoint do
+      # ...
 
-  # ...
+      # add this after `use Phoenix.Endpoint`
+      use SiteEncrypt.Phoenix
 
-  @impl SiteEncrypt
-  def certification do
-    SiteEncrypt.configure(
-      # Note that native client is very immature. If you want a more stable behaviour, you can
-      # provide `:certbot` instead. Note that in this case certbot needs to be installed on the
-      # host machine.
-      client: :native,
+      # ...
 
-      domains: ["mysite.com", "www.mysite.com"],
-      emails: ["contact@abc.org", "another_contact@abc.org"],
+      @impl SiteEncrypt
+      def certification do
+        SiteEncrypt.configure(
+          # Note that native client is very immature. If you want a more stable behaviour, you can
+          # provide `:certbot` instead. Note that in this case certbot needs to be installed on the
+          # host machine.
+          client: :native,
 
-      db_folder: Application.app_dir(:phoenix_demo, "priv") |> Path.join("site_encrypt"),
+          domains: ["mysite.com", "www.mysite.com"],
+          emails: ["contact@abc.org", "another_contact@abc.org"],
 
-      # set OS env var MODE to "staging" or "production" on staging/production hosts
-      directory_url:
-        case System.get_env("MODE", "local") do
-          "local" -> {:internal, port: 4002}
-          "staging" -> "https://acme-staging-v02.api.letsencrypt.org/directory"
-          "production" -> "https://acme-v02.api.letsencrypt.org/directory"
-        end
-    )
-  end
+          db_folder: Application.app_dir(:phoenix_demo, Path.join(~w/priv site_encrypt/)),
 
-  # ...
-end
-```
+          # set OS env var MODE to "staging" or "production" on staging/production hosts
+          directory_url:
+            case System.get_env("MODE", "local") do
+              "local" -> {:internal, port: 4002}
+              "staging" -> "https://acme-staging-v02.api.letsencrypt.org/directory"
+              "production" -> "https://acme-v02.api.letsencrypt.org/directory"
+            end
+        )
+      end
 
-Configure https:
+      # ...
+    end
+    ```
 
-```elixir
-defmodule PhoenixDemo.Endpoint do
-  # ...
+1. Configure https:
 
-  @impl Phoenix.Endpoint
-  def init(_key, config) do
-    # this will merge key, cert, and chain into `:https` key as configured in config.exs
-    {:ok, SiteEncrypt.Phoenix.configure_https(config)}
+    ```elixir
+    defmodule PhoenixDemo.Endpoint do
+      # ...
 
-    # to completely configure https from `init/2`, invoke:
-    #   SiteEncrypt.Phoenix.configure_https(config, port: 4001, ...)
-  end
+      @impl Phoenix.Endpoint
+      def init(_key, config) do
+        # this will merge key, cert, and chain into `:https` configuration from config.exs
+        {:ok, SiteEncrypt.Phoenix.configure_https(config)}
 
-  # ...
-end
-```
+        # to completely configure https from `init/2`, invoke:
+        #   SiteEncrypt.Phoenix.configure_https(config, port: 4001, ...)
+      end
 
-Finally, you need to start the endpoint via `SiteEncrypt`:
+      # ...
+    end
+    ```
 
-```elixir
-defmodule PhoenixDemo.Application do
-  use Application
+1. Start the endpoint via `SiteEncrypt`:
 
-  def start(_type, _args) do
-    children = [{SiteEncrypt.Phoenix, PhoenixDemo.Endpoint}]
-    opts = [strategy: :one_for_one, name: PhoenixDemo.Supervisor]
-    Supervisor.start_link(children, opts)
-  end
+    ```elixir
+    defmodule PhoenixDemo.Application do
+      use Application
 
-  # ...
-end
-```
+      def start(_type, _args) do
+        children = [{SiteEncrypt.Phoenix, PhoenixDemo.Endpoint}]
+        opts = [strategy: :one_for_one, name: PhoenixDemo.Supervisor]
+        Supervisor.start_link(children, opts)
+      end
+
+      # ...
+    end
+    ```
 
 And that's it! At this point you can start the system:
 
-```
+```text
 $ iex -S mix phx.server
 
-22:10:13.938 [info]  Generating a temporary self-signed certificate. This certificate will be used until a proper certificate is issued by the CA server.
-22:10:14.321 [info]  Running local ACME server at port 4002
-22:10:14.356 [info]  Running PhoenixDemo.Endpoint with cowboy 2.7.0 at 0.0.0.0:4000 (http)
-22:10:14.380 [info]  Running PhoenixDemo.Endpoint with cowboy 2.7.0 at 0.0.0.0:4001 (https)
-
-# wait for about 10 seconds
-
-# ...
-22:10:20.568 [info]  Obtained new certificate for localhost
+[info]  Generating a temporary self-signed certificate. This certificate will be used until a proper certificate is issued by the CA server.
+[info]  Running PhoenixDemo.Endpoint with cowboy 2.7.0 at 0.0.0.0:4000 (http)
+[info]  Running PhoenixDemo.Endpoint with cowboy 2.7.0 at 0.0.0.0:4001 (https)
+[info]  Running local ACME server at port 4002
+[info]  Ordering a new certificate for domain mysite.com
+[info]  New certificate for domain mysite.com obtained
+[info]  Certificate successfully obtained! It is valid until 3019-09-27. Next renewal is scheduled for 3019-08-28.
 ```
 
 And visit your certified site at https://localhost:4001
-
-The certificate issued by the integrated ACME server expires after 1000 years. Therefore, if you restart the site, the certificate won't be renewed.
-
-If something goes wrong, usually if you abruptly took down the system in the middle of the certification, the certbot might not work again. In this case, you can just delete the contents of the certbot folder.
-
-Of course, in real production you want to backup this folder after every change, and restore it if something is corrupt.
-
-#### Testing
-
-You can test the certification in the following way:
-
-```elixir
-defmodule PhoenixDemo.EndpointTest do
-  use SiteEncrypt.Phoenix.Test, endpoint: PhoenixDemo.Endpoint
-end
-
-```
-
-## Backup and restore
-
-SiteEncrypt supports automatic backup. To enable it, include `backup: path_to_backup_tgz` in the options returned by `config/0`. Every time a new certificate is obtained, the entire content of the `db_folder` will be backed up to this file as a compressed tarball. This happens before `handle_new_cert` is invoked.
-
-Note that this file is not encrypted, so make sure to restrict the access to it, or otherwise postprocess it (e.g. encrypt it) in the `handle_new_cert` callback.
-
-The backup is automatically restored when the endpoint is started if the following conditions are met:
-
-1. The backup file exists at the location configured via the `:backup` option
-2. The `db_folder` doesn't exist
-
-Note that a successful restore is treated as a certificate renewal, which means that the new certificate will be backed up (if configured), and `handle_new_cert` will be invoked.
-
-## Force renewal
-
-To force renew a certificate, you can invoke `SiteEncrypt.force_renew(YourEndpointModule)`. This will temporarily pause the periodic renewal (waiting for it to finish if it happens to be running), renew the certificate, and resume the periodic renewal. The new certificate will be backed up, and `handle_new_cert` will be invoked.
 
 ## License
 

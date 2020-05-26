@@ -1,4 +1,25 @@
 defmodule SiteEncrypt.Phoenix.Test do
+  @moduledoc """
+  Helper for testing the certification.
+
+  ## Usage
+
+      defmodule MyEndpoint.CertificationTest do
+        use SiteEncrypt.Phoenix.Test, endpoint: MyEndpoint
+      end
+
+  This will generate a single test which does the following:
+
+  1. Stops the endpoint, and removes the db_folder and the backup.
+  2. Restarts the endpoint, temporarily setting `server: true`.
+  3. Waits for the certification to finish.
+  4. Verifies that the site is serving the traffic using the new certificate.
+
+  For this to work, you need to use the internal ACME server during tests.
+  Refer to `SiteEncrypt.configure/1` for details.
+  """
+
+  @doc false
   defmacro __using__(opts) do
     quote bind_quoted: [
             endpoint: Keyword.fetch!(opts, :endpoint),
@@ -38,6 +59,7 @@ defmodule SiteEncrypt.Phoenix.Test do
     end
   end
 
+  @doc false
   def clean_restart(endpoint) do
     SiteEncrypt.Phoenix.restart_site(endpoint, fn ->
       ~w/db_folder backup/a
@@ -52,6 +74,7 @@ defmodule SiteEncrypt.Phoenix.Test do
     end)
   end
 
+  @doc false
   @spec get_cert(module) :: X509.Certificate.t()
   def get_cert(endpoint) do
     {:ok, socket} = :ssl.connect('localhost', https_port(endpoint), [], :timer.seconds(5))

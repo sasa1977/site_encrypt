@@ -1,4 +1,6 @@
 defmodule SiteEncrypt.Registry do
+  @moduledoc false
+
   def child_spec(_),
     do: Supervisor.child_spec({Registry, keys: :unique, name: __MODULE__}, id: __MODULE__)
 

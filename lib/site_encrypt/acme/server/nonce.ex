@@ -1,4 +1,6 @@
 defmodule SiteEncrypt.Acme.Server.Nonce do
+  @moduledoc false
+
   @spec new(SiteEncrypt.Acme.Server.config()) :: integer()
   def new(config) do
     nonce = :erlang.unique_integer([:positive, :monotonic])

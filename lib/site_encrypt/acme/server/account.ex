@@ -1,4 +1,6 @@
 defmodule SiteEncrypt.Acme.Server.Account do
+  @moduledoc false
+
   @type t :: %{id: id, location: String.t()}
   @type id :: String.t()
   @type key :: map

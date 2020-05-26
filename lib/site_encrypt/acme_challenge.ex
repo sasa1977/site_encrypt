@@ -1,4 +1,5 @@
 defmodule SiteEncrypt.AcmeChallenge do
+  @moduledoc false
   @behaviour Plug
   alias SiteEncrypt.Registry
 

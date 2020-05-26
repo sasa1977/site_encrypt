@@ -1,4 +1,6 @@
 defmodule SiteEncrypt.Acme.Server.Standalone do
+  @moduledoc false
+
   def child_spec(opts) do
     {_adapter, adapter_opts} = Keyword.fetch!(opts, :adapter)
     port = port(adapter_opts)

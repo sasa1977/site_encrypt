@@ -1,4 +1,5 @@
 defmodule SiteEncrypt.Acme.Server.Db do
+  @moduledoc false
   use GenServer
 
   def start_link(config), do: GenServer.start_link(__MODULE__, config)

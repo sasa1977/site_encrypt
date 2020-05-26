@@ -1,4 +1,5 @@
 defmodule SiteEncrypt.Acme.Server do
+  @moduledoc false
   alias SiteEncrypt.Acme.Server.Account
 
   @type site :: String.t()
