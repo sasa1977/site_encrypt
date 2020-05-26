@@ -18,7 +18,7 @@ The target projects are small-to-medium Elixir based sites which don't sit behin
 
 ## Quick start
 
-A basic demo Phoenix project is available [here](./demos/phoenix).
+A basic demo Phoenix project is available [here](https://github.com/sasa1977/site_encrypt/tree/master/demos/phoenix).
 
 1. Add the dependency to `mix.exs`:
 
