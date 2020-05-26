@@ -8,7 +8,11 @@ defmodule SiteEncrypt.MixProject do
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      dialyzer: [plt_add_deps: :transitive, remove_defaults: [:unknown]]
+      dialyzer: [plt_add_deps: :transitive, remove_defaults: [:unknown]],
+      docs: [
+        main: "readme",
+        extras: ["README.md"]
+      ]
     ]
   end
 
@@ -23,6 +27,7 @@ defmodule SiteEncrypt.MixProject do
     [
       {:castore, "~> 0.1"},
       {:dialyxir, "~> 1.0", runtime: false},
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
       {:jason, "~> 1.0"},
       {:jose, "~> 1.10"},
       {:mint, "~> 1.1"},
