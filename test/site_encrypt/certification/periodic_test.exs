@@ -1,7 +1,8 @@
 defmodule SiteEncrypt.Certification.PeriodicTest do
-  use SiteEncrypt.Phoenix.Test, endpoint: __MODULE__.TestEndpoint, async: true
+  use ExUnit.Case, async: true
   use ExUnitProperties
 
+  import SiteEncrypt.Phoenix.Test
   import StreamData
   import SiteEncrypt.Phoenix.Test
 
@@ -11,6 +12,10 @@ defmodule SiteEncrypt.Certification.PeriodicTest do
   setup_all do
     start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
     :ok
+  end
+
+  setup do
+    clean_restart(TestEndpoint)
   end
 
   test "is scheduled for the desired date" do

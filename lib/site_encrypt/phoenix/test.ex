@@ -5,61 +5,34 @@ defmodule SiteEncrypt.Phoenix.Test do
   ## Usage
 
       defmodule MyEndpoint.CertificationTest do
-        use SiteEncrypt.Phoenix.Test, endpoint: MyEndpoint
+        use ExUnit.Case, async: false
+        import SiteEncrypt.Phoenix.Test
+
+        test "certification" do
+          clean_restart(MyEndpoint)
+          cert = get_cert(MyEndpoint)
+          assert cert.domains == ~w/mysite.com www.mysite.com/
+        end
       end
-
-  This will generate a single test which does the following:
-
-  1. Stops the endpoint, and removes the db_folder and the backup.
-  2. Restarts the endpoint, temporarily setting `server: true`.
-  3. Waits for the certification to finish.
-  4. Verifies that the site is serving the traffic using the new certificate.
 
   For this to work, you need to use the internal ACME server during tests.
   Refer to `SiteEncrypt.configure/1` for details.
+
+  Also note that this test will restart the endpoint. In addition, it will configure Phoenix to
+  serve the traffic. Therefore, make sure you pick a different set of ports in test, if you want
+  to be able to run the tests while the system is started.
+
+  Due to endpoint being restarted, the test case has to be marked as `async: false`.
   """
 
-  @doc false
-  defmacro __using__(opts) do
-    quote bind_quoted: [
-            endpoint: Keyword.fetch!(opts, :endpoint),
-            async: Keyword.get(opts, :async, false)
-          ] do
-      use ExUnit.Case, async: async
+  require X509.ASN1
 
-      setup do
-        endpoint = unquote(endpoint)
-        SiteEncrypt.Phoenix.Test.clean_restart(endpoint)
+  @doc """
+  Restarts the endpoint, removing all site_encrypt folders in the process.
 
-        self_signed_cert = SiteEncrypt.Phoenix.Test.get_cert(endpoint)
-
-        utc_now = DateTime.utc_now()
-        midnight = %DateTime{utc_now | hour: 0, minute: 0, second: 0}
-        assert SiteEncrypt.Certification.Periodic.tick(endpoint, midnight) == :ok
-        new_cert = SiteEncrypt.Phoenix.Test.get_cert(endpoint)
-        refute new_cert == self_signed_cert
-
-        :ok
-      end
-
-      test "certification" do
-        require X509.ASN1
-
-        cert = SiteEncrypt.Phoenix.Test.get_cert(unquote(endpoint))
-
-        domains =
-          cert
-          |> X509.Certificate.extension(:subject_alt_name)
-          |> X509.ASN1.extension(:extnValue)
-          |> Keyword.values()
-          |> Enum.map(&to_string/1)
-
-        assert domains == SiteEncrypt.Registry.config(unquote(endpoint)).domains
-      end
-    end
-  end
-
-  @doc false
+  After the restart, the new certificate will be obtained.
+  """
+  @spec clean_restart(module) :: :ok
   def clean_restart(endpoint) do
     SiteEncrypt.Phoenix.restart_site(endpoint, fn ->
       ~w/db_folder backup/a
@@ -72,15 +45,34 @@ defmodule SiteEncrypt.Phoenix.Test do
       Application.put_env(app, endpoint, Keyword.put(endpoint_config, :server, true))
       ExUnit.Callbacks.on_exit(fn -> Application.put_env(app, endpoint, endpoint_config) end)
     end)
+
+    SiteEncrypt.force_renew(endpoint)
   end
 
-  @doc false
-  @spec get_cert(module) :: X509.Certificate.t()
+  @doc """
+  Obtains the certificate for the given endpoint.
+
+  The certificate is obtained by establishing an SSL connection. Therefore, for this function to
+  work, the endpoint has to be serving traffic. This will happen if you previously invoked
+  `clean_restart/1`.
+  """
+  @spec get_cert(module) :: %{der: binary, issuer: String.t(), domains: [String.t()]}
   def get_cert(endpoint) do
     {:ok, socket} = :ssl.connect('localhost', https_port(endpoint), [], :timer.seconds(5))
     {:ok, der_cert} = :ssl.peercert(socket)
     :ssl.close(socket)
-    X509.Certificate.from_der!(der_cert)
+    cert = X509.Certificate.from_der!(der_cert)
+
+    domains =
+      cert
+      |> X509.Certificate.extension(:subject_alt_name)
+      |> X509.ASN1.extension(:extnValue)
+      |> Keyword.values()
+      |> Enum.map(&to_string/1)
+
+    [issuer] = cert |> X509.Certificate.issuer() |> X509.RDNSequence.get_attr("commonName")
+
+    %{der: der_cert, domains: domains, issuer: issuer}
   end
 
   defp https_port(endpoint), do: Keyword.fetch!(endpoint.config(:https), :port)

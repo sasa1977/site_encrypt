@@ -1,7 +1,7 @@
 for {client, index} <- Enum.with_index([:native, :certbot]),
     client != :certbot or System.get_env("CI") == "true" do
   defmodule Module.concat(SiteEncrypt, "#{Macro.camelize(to_string(client))}Test") do
-    use SiteEncrypt.Phoenix.Test, endpoint: __MODULE__.TestEndpoint, async: true
+    use ExUnit.Case, async: true
     use ExUnitProperties
     import SiteEncrypt.Phoenix.Test
     alias __MODULE__.TestEndpoint
@@ -9,6 +9,14 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
     setup_all do
       start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
       :ok
+    end
+
+    setup do
+      clean_restart(TestEndpoint)
+    end
+
+    test "certification" do
+      assert get_cert(TestEndpoint).domains == ~w/localhost foo.localhost/
     end
 
     test "force_renew" do

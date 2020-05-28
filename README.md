@@ -110,6 +110,21 @@ A basic demo Phoenix project is available [here](https://github.com/sasa1977/sit
     end
     ```
 
+1. Optionally add a certification test
+
+    ```elixir
+    defmodule PhoenixDemo.Endpoint.CertificationTest do
+      use ExUnit.Case, async: false
+      import SiteEncrypt.Phoenix.Test
+
+      test "certification" do
+        clean_restart(PhoenixDemo.Endpoint)
+        cert = get_cert(PhoenixDemo.Endpoint)
+        assert cert.domains == ~w/mysite.com www.mysite.com/
+      end
+    end
+    ```
+
 And that's it! At this point you can start the system:
 
 ```text

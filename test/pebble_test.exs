@@ -25,12 +25,19 @@ defmodule SiteEncrypt.PebbleTest do
 
   test "certification" do
     clean_restart(TestEndpoint)
-    self_signed_cert = get_cert(TestEndpoint)
-    assert SiteEncrypt.force_renew(TestEndpoint) == :ok
     cert = get_cert(TestEndpoint)
-    refute cert == self_signed_cert
-    assert [issuer] = cert |> X509.Certificate.issuer() |> X509.RDNSequence.get_attr("commonName")
-    assert issuer =~ "Pebble"
+    assert cert.issuer =~ "Pebble"
+  end
+
+  test "renewal" do
+    clean_restart(TestEndpoint)
+    first_cert = get_cert(TestEndpoint)
+
+    assert SiteEncrypt.force_renew(TestEndpoint) == :ok
+
+    second_cert = get_cert(TestEndpoint)
+    refute second_cert == first_cert
+    assert second_cert.issuer =~ "Pebble"
   end
 
   defmodule TestEndpoint do
