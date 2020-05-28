@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0
+
+### Breaking changes
+
+- The interface for writing tests has been changed. A certification test should now be written as
+
+    ```elixir
+    defmodule MyEndpoint.CertificationTest do
+      use ExUnit.Case, async: false
+      import SiteEncrypt.Phoenix.Test
+
+      test "certification" do
+        clean_restart(MyEndpoint)
+        cert = get_cert(MyEndpoint)
+        assert cert.domains == ~w/mysite.com www.mysite.com/
+      end
+    end
+    ```
+
 ## 0.1.0
 
 - added a basic native ACME client
