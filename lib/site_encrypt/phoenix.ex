@@ -102,23 +102,19 @@ defmodule SiteEncrypt.Phoenix do
   @impl Supervisor
   def init({config, endpoint}) do
     :ok = SiteEncrypt.Registry.register_main_site(config)
-
     SiteEncrypt.initialize_certs(config)
+    Supervisor.init([endpoint, certification_spec(config, endpoint)], strategy: :one_for_one)
+  end
 
-    Supervisor.init(
-      [
-        Supervisor.child_spec(endpoint, id: :endpoint),
-        # The remaining processes are started via `start_certification`. This is needed so we
-        # can get the fully shaped endpoint config, and determine if we need to start certification
-        # processes.
-        %{
-          id: :certification,
-          start: {__MODULE__, :start_certification, [config, endpoint]},
-          type: :supervisor
-        }
-      ],
-      strategy: :one_for_one
-    )
+  defp certification_spec(config, endpoint) do
+    # The remaining processes are started via `start_certification`. This is needed so we
+    # can get the fully shaped endpoint config, and determine if we need to start certification
+    # processes.
+    %{
+      id: :certification,
+      start: {__MODULE__, :start_certification, [config, endpoint]},
+      type: :supervisor
+    }
   end
 
   @doc false
