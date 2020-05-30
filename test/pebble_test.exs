@@ -3,20 +3,7 @@ defmodule SiteEncrypt.PebbleTest do
   import SiteEncrypt.Phoenix.Test
   alias __MODULE__.TestEndpoint
 
-  {:ok, http} = SiteEncrypt.Acme.Client.Http.start_link(verify_server_cert: false)
-
-  dir_status =
-    SiteEncrypt.Acme.Client.Http.request(http, :get, "https://localhost:14000/dir", [], "")
-
-  unless match?({:ok, %{status: 200}}, dir_status) do
-    Mix.shell().info("""
-    To enable pebble tests, start the local container with the following command:
-
-        docker run --rm -it -e "PEBBLE_VA_NOSLEEP=1" --net=host letsencrypt/pebble /usr/bin/pebble -strict
-    """)
-
-    @moduletag skip: "local pebble is not running"
-  end
+  @moduletag :pebble
 
   setup_all do
     start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
