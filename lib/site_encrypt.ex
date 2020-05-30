@@ -144,10 +144,14 @@ defmodule SiteEncrypt do
   defmacro configure(opts) do
     mode = if Mix.env() == :test, do: :manual, else: :auto
 
+    # adding a suffix in test env to avoid removal of dev certificates during tests
+    db_folder_suffix = if Mix.env() == :test, do: "test", else: ""
+
     quote do
       unquote(opts)
       |> NimbleOptions.validate!(unquote(Macro.escape(@certification_schema)))
       |> Map.new()
+      |> Map.update!(:db_folder, &Path.join(&1, unquote(db_folder_suffix)))
       |> Map.put_new(:backup, nil)
       |> Map.put_new(:id, __MODULE__)
       |> Map.merge(%{mode: unquote(mode), callback: __MODULE__})
