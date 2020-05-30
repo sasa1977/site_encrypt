@@ -142,16 +142,15 @@ defmodule SiteEncrypt do
   #{NimbleOptions.docs(@certification_schema)}
   """
   defmacro configure(opts) do
+    mode = if Mix.env() == :test, do: :manual, else: :auto
+
     quote do
       unquote(opts)
       |> NimbleOptions.validate!(unquote(Macro.escape(@certification_schema)))
       |> Map.new()
       |> Map.put_new(:backup, nil)
       |> Map.put_new(:id, __MODULE__)
-      |> Map.merge(%{
-        mode: if(unquote(Mix.env()) == :test, do: :manual, else: :auto),
-        callback: __MODULE__
-      })
+      |> Map.merge(%{mode: unquote(mode), callback: __MODULE__})
     end
   end
 
