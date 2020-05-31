@@ -1,7 +1,6 @@
 defmodule SiteEncrypt.Certification.Native do
   @moduledoc false
   @behaviour SiteEncrypt.Certification.Job
-  require Logger
 
   alias SiteEncrypt.Acme.Client
   alias SiteEncrypt.Certification.Job
@@ -19,18 +18,28 @@ defmodule SiteEncrypt.Certification.Native do
   end
 
   @impl Job
-  def certify(config, http_pool, _opts) do
-    case account_key(config) do
-      nil -> new_account(config, http_pool)
-      account_key -> new_cert(config, http_pool, account_key)
+  def certify(config, opts) do
+    {:ok, http_pool} = Client.Http.start_link(Keyword.take(opts, [:verify_server_cert]))
+
+    try do
+      case account_key(config) do
+        nil -> new_account(config, http_pool)
+        account_key -> new_cert(config, http_pool, account_key)
+      end
+    after
+      Client.Http.stop(http_pool)
     end
   end
 
   @impl Job
-  def full_challenge(_config, _challenge), do: raise("shouldn't land here")
+  def full_challenge(_config, _challenge), do: raise("unknown challenge")
+
+  defp log(config, msg) do
+    SiteEncrypt.log(config, "#{msg} (CA #{URI.parse(SiteEncrypt.directory_url(config)).host})")
+  end
 
   defp new_account(config, http_pool) do
-    SiteEncrypt.log(config, "Creating new ACME account for domain #{hd(config.domains)}")
+    log(config, "Creating new account")
     session = Client.new_account(http_pool, config.id, SiteEncrypt.directory_url(config))
     store_account_key!(config, session.account_key)
     create_certificate(config, session)
@@ -43,11 +52,10 @@ defmodule SiteEncrypt.Certification.Native do
   end
 
   defp create_certificate(config, session) do
-    SiteEncrypt.log(config, "Ordering a new certificate for domain #{hd(config.domains)}")
+    log(config, "Ordering a new certificate for domain #{hd(config.domains)}")
     {pems, _session} = Client.create_certificate(session, config.id)
     store_pems!(config, pems)
-    SiteEncrypt.log(config, "New certificate for domain #{hd(config.domains)} obtained")
-    :ok
+    log(config, "New certificate for domain #{hd(config.domains)} obtained")
   end
 
   defp account_key(config) do

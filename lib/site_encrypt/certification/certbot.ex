@@ -25,7 +25,7 @@ defmodule SiteEncrypt.Certification.Certbot do
   end
 
   @impl SiteEncrypt.Certification.Job
-  def certify(config, _http_pool, opts) do
+  def certify(config, opts) do
     ensure_folders(config)
 
     result =
@@ -110,9 +110,16 @@ defmodule SiteEncrypt.Certification.Certbot do
   defp log_folder(config), do: Path.join(root_folder(config), "log")
   defp work_folder(config), do: Path.join(root_folder(config), "work")
   defp webroot_folder(config), do: Path.join(root_folder(config), "webroot")
-  defp root_folder(config), do: Path.join(config.db_folder, "certbot")
+  defp root_folder(config), do: Path.join([config.db_folder, "certbot", ca_folder(config)])
 
   defp keyfile(config), do: Path.join(keys_folder(config), "privkey.pem")
   defp certfile(config), do: Path.join(keys_folder(config), "cert.pem")
   defp cacertfile(config), do: Path.join(keys_folder(config), "chain.pem")
+
+  defp ca_folder(config) do
+    case URI.parse(SiteEncrypt.directory_url(config)) do
+      %URI{host: host, port: 443} -> host
+      %URI{host: host, port: port} -> "#{host}_#{port}"
+    end
+  end
 end

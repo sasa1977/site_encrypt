@@ -11,6 +11,9 @@ defmodule SiteEncrypt.Acme.Client.Http do
   @spec start_link(opts) :: GenServer.on_start()
   def start_link(opts), do: Parent.GenServer.start_link(__MODULE__, opts)
 
+  @spec stop(pid, any) :: :ok
+  def stop(pool, reason \\ :normal), do: GenServer.stop(pool, reason)
+
   @spec request(pid, method, String.t(), Mint.Types.headers(), binary) ::
           {:ok, response} | {:error, Mint.Types.error()}
   def request(pool, method, url, headers, body) do

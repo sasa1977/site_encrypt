@@ -25,6 +25,12 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
       assert get_cert(TestEndpoint) != first_cert
     end
 
+    test "new_cert" do
+      first_cert = get_cert(TestEndpoint)
+      assert {:ok, _pems} = SiteEncrypt.new_certificate(TestEndpoint)
+      assert get_cert(TestEndpoint) == first_cert
+    end
+
     test "backup and restore" do
       config = SiteEncrypt.Registry.config(TestEndpoint)
       first_cert = get_cert(TestEndpoint)

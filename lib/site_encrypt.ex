@@ -21,6 +21,8 @@ defmodule SiteEncrypt do
           key_size: pos_integer
         }
 
+  @type pems :: [privkey: String.t(), cert: String.t(), chain: String.t()]
+
   @typedoc """
   Uniquely identifies the site certified via site_encrypt.
 
@@ -167,16 +169,6 @@ defmodule SiteEncrypt do
     end
   end
 
-  @doc """
-  Force renews the certificate for the given site.
-
-  Be very careful when invoking this function in production, because you might trip some rate
-  limit at the CA server (see [here](https://letsencrypt.org/docs/rate-limits/) for Let's
-  Encrypt limits).
-  """
-  @spec force_renew(id()) :: :ok
-  def force_renew(id), do: Certification.run_renew(SiteEncrypt.Registry.config(id))
-
   @doc "Returns the paths to the certificates and the key for the given site."
   @spec https_keys(id) :: [keyfile: Path.t(), certfile: Path.t(), cacertfile: Path.t()]
   def https_keys(id) do
@@ -187,6 +179,30 @@ defmodule SiteEncrypt do
       certfile: Path.join(cert_folder(config), "cert.pem"),
       cacertfile: Path.join(cert_folder(config), "chain.pem")
     ]
+  end
+
+  @doc """
+  Force renews the certificate for the given site.
+
+  Be very careful when invoking this function in production, because you might trip some rate
+  limit at the CA server (see [here](https://letsencrypt.org/docs/rate-limits/) for Let's
+  Encrypt limits).
+  """
+  @spec force_renew(id) :: :ok
+  def force_renew(id), do: Certification.run_renew(SiteEncrypt.Registry.config(id))
+
+  @doc """
+  Generates a new certificate for the given site without applying it.
+
+  You can optionally provide a different directory_url. This can be useful to test certification
+  through another CA or through Let's Encrypt staging site.
+  """
+  @spec new_certificate(id, directory_url: String.t()) :: {:ok, pems} | :error
+  def new_certificate(id, opts \\ []) do
+    id
+    |> SiteEncrypt.Registry.config()
+    |> Map.update!(:directory_url, &Keyword.get(opts, :directory_url, &1))
+    |> SiteEncrypt.Certification.Job.certify()
   end
 
   @doc false
