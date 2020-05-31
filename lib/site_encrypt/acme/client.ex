@@ -2,26 +2,18 @@ defmodule SiteEncrypt.Acme.Client do
   @moduledoc false
   alias SiteEncrypt.Acme.Client.{API, Crypto}
 
-  @type cert_config :: %{
-          id: SiteEncrypt.id(),
-          domains: [String.t()],
-          poll_delay: pos_integer,
-          key_size: pos_integer,
-          register_challenge: (token :: String.t(), keythumbprint :: String.t() -> any),
-          await_challenge: (() -> boolean)
-        }
-
   @type keys :: %{
           privkey: String.t(),
           cert: String.t(),
           chain: String.t()
         }
 
-  @spec new_account(pid, String.t(), [String.t()], key_size: pos_integer) :: API.session()
-  def new_account(http_pool, directory_url, contacts, opts \\ []) do
-    account_key = JOSE.JWK.generate_key({:rsa, Keyword.get(opts, :key_size, 4096)})
+  @spec new_account(pid, SiteEncrypt.id(), String.t()) :: API.session()
+  def new_account(http_pool, id, directory_url) do
+    config = SiteEncrypt.Registry.config(id)
+    account_key = JOSE.JWK.generate_key({:rsa, config.key_size})
     session = start_session(http_pool, directory_url, account_key)
-    {:ok, session} = API.new_account(session, contacts)
+    {:ok, session} = API.new_account(session, config.emails)
     session
   end
 
@@ -32,8 +24,9 @@ defmodule SiteEncrypt.Acme.Client do
     session
   end
 
-  @spec create_certificate(API.session(), cert_config) :: {keys, API.session()}
-  def create_certificate(session, config) do
+  @spec create_certificate(API.session(), SiteEncrypt.id()) :: {keys, API.session()}
+  def create_certificate(session, id) do
+    config = SiteEncrypt.Registry.config(id)
     {:ok, order, session} = API.new_order(session, config.domains)
     {private_key, order, session} = process_new_order(session, order, config)
     {:ok, cert, chain, session} = API.get_cert(session, order)
@@ -47,19 +40,24 @@ defmodule SiteEncrypt.Acme.Client do
   end
 
   defp process_new_order(session, %{status: :pending} = order, config) do
-    {pending_authorizations, session} =
+    {pending, session} =
       Enum.reduce(
         order.authorizations,
         {[], session},
         fn authorization, {pending_authorizations, session} ->
           case authorize(session, config, authorization) do
-            {:pending, session} -> {[authorization | pending_authorizations], session}
-            {:valid, session} -> {pending_authorizations, session}
+            {:pending, challenge, session} ->
+              {[{authorization, challenge} | pending_authorizations], session}
+
+            {:valid, session} ->
+              {pending_authorizations, session}
           end
         end
       )
 
-    await_server_challenges(Enum.count(pending_authorizations), config)
+    {pending_authorizations, pending_challenges} = Enum.unzip(pending)
+    SiteEncrypt.Registry.await_challenges(config.id, pending_challenges, :timer.minutes(1))
+
     {:ok, session} = poll(session, config, &validate_authorizations(&1, pending_authorizations))
 
     {order, session} =
@@ -99,20 +97,13 @@ defmodule SiteEncrypt.Acme.Client do
     case http_challenge.status do
       :pending ->
         key_thumbprint = JOSE.JWK.thumbprint(session.account_key)
-        config.register_challenge.(http_challenge.token, key_thumbprint)
+        SiteEncrypt.Registry.register_challenge(config.id, http_challenge.token, key_thumbprint)
         {:ok, _challenge_response, session} = API.challenge(session, http_challenge)
-        {:pending, session}
+        {:pending, http_challenge.token, session}
 
       :valid ->
         {:valid, session}
     end
-  end
-
-  defp await_server_challenges(count, config) do
-    Stream.repeatedly(config.await_challenge)
-    |> Stream.take_while(& &1)
-    |> Stream.take(count)
-    |> Stream.run()
   end
 
   defp validate_authorizations(session, []), do: {:ok, session}
@@ -129,8 +120,8 @@ defmodule SiteEncrypt.Acme.Client do
     poll(
       session,
       operation,
-      Map.get(config, :attempts, 60),
-      Map.get(config, :poll_delay, :timer.seconds(1))
+      60,
+      if(SiteEncrypt.local_ca?(config), do: 50, else: :timer.seconds(2))
     )
   end
 

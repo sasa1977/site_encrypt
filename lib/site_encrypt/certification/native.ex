@@ -3,6 +3,7 @@ defmodule SiteEncrypt.Certification.Native do
   @behaviour SiteEncrypt.Certification.Job
   require Logger
 
+  alias SiteEncrypt.Acme.Client
   alias SiteEncrypt.Certification.Job
 
   @impl Job
@@ -30,45 +31,20 @@ defmodule SiteEncrypt.Certification.Native do
 
   defp new_account(config, http_pool) do
     SiteEncrypt.log(config, "Creating new ACME account for domain #{hd(config.domains)}")
-
-    session =
-      SiteEncrypt.Acme.Client.new_account(
-        http_pool,
-        SiteEncrypt.directory_url(config),
-        config.emails,
-        key_size: config.key_size
-      )
-
+    session = Client.new_account(http_pool, config.id, SiteEncrypt.directory_url(config))
     store_account_key!(config, session.account_key)
     create_certificate(config, session)
   end
 
   defp new_cert(config, http_pool, account_key) do
     directory_url = SiteEncrypt.directory_url(config)
-    session = SiteEncrypt.Acme.Client.for_existing_account(http_pool, directory_url, account_key)
+    session = Client.for_existing_account(http_pool, directory_url, account_key)
     create_certificate(config, session)
   end
 
   defp create_certificate(config, session) do
-    id = config.id
     SiteEncrypt.log(config, "Ordering a new certificate for domain #{hd(config.domains)}")
-
-    {pems, _session} =
-      SiteEncrypt.Acme.Client.create_certificate(session, %{
-        id: config.id,
-        domains: config.domains,
-        poll_delay: if(SiteEncrypt.local_ca?(config), do: 50, else: :timer.seconds(2)),
-        key_size: config.key_size,
-        register_challenge: &SiteEncrypt.Registry.register_challenge!(id, &1, &2),
-        await_challenge: fn ->
-          receive do
-            {:got_challenge, ^id} -> true
-          after
-            :timer.minutes(1) -> false
-          end
-        end
-      })
-
+    {pems, _session} = Client.create_certificate(session, config.id)
     store_pems!(config, pems)
     SiteEncrypt.log(config, "New certificate for domain #{hd(config.domains)} obtained")
     :ok
