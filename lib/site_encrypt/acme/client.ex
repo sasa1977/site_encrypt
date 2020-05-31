@@ -19,7 +19,7 @@ defmodule SiteEncrypt.Acme.Client do
 
   @spec new_account(pid, String.t(), [String.t()], key_size: pos_integer) :: API.session()
   def new_account(http_pool, directory_url, contacts, opts \\ []) do
-    account_key = JOSE.JWK.generate_key({:rsa, Keyword.get(opts, :key_size, 2048)})
+    account_key = JOSE.JWK.generate_key({:rsa, Keyword.get(opts, :key_size, 4096)})
     session = start_session(http_pool, directory_url, account_key)
     {:ok, session} = API.new_account(session, contacts)
     session
@@ -74,7 +74,7 @@ defmodule SiteEncrypt.Acme.Client do
   end
 
   defp process_new_order(session, %{status: :ready} = order, config) do
-    private_key = Crypto.new_private_key(Map.get(config, :key_size, 2048))
+    private_key = Crypto.new_private_key(Map.get(config, :key_size, 4096))
     csr = Crypto.csr(private_key, config.domains)
 
     {:ok, _finalization, session} = API.finalize(session, order, csr)
