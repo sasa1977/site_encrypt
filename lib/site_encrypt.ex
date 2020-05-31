@@ -18,7 +18,8 @@ defmodule SiteEncrypt do
           client: :native | :certbot,
           backup: String.t() | nil,
           callback: module,
-          key_size: pos_integer
+          key_size: pos_integer,
+          periodic_offset: Certification.Periodic.offset()
         }
 
   @type pems :: [privkey: String.t(), cert: String.t(), chain: String.t()]
@@ -164,6 +165,7 @@ defmodule SiteEncrypt do
         |> Map.put_new(:backup, nil)
         |> Map.put_new(:id, __MODULE__)
         |> Map.merge(%{mode: unquote(mode), callback: __MODULE__})
+        |> Map.put(:periodic_offset, Certification.Periodic.offset())
 
       if SiteEncrypt.local_ca?(config), do: %{config | key_size: 1024}, else: config
     end

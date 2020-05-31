@@ -1,6 +1,21 @@
 defmodule SiteEncrypt.Certification.Periodic do
   @moduledoc false
 
+  @hour_interval 8
+
+  @type offset :: %{hour: 0..unquote(@hour_interval), minute: 0..59, second: 0..59}
+
+  @spec offset :: offset
+  def offset do
+    # Offset for periodical job. This offset is randomized to reduce traffic spikes on the CA
+    # server, as suggested at https://letsencrypt.org/docs/integration-guide/
+    %{
+      hour: :rand.uniform(@hour_interval) - 1,
+      minute: :rand.uniform(60) - 1,
+      second: :rand.uniform(60) - 1
+    }
+  end
+
   def child_spec(config) do
     Periodic.child_spec(
       id: __MODULE__.Scheduler,
@@ -14,7 +29,9 @@ defmodule SiteEncrypt.Certification.Periodic do
   end
 
   defp time_to_renew?(config, now) do
-    rem(now.hour, 8) == 0 and now.minute == 0 and now.second == 0 and
+    rem(now.hour, @hour_interval) == config.periodic_offset.hour and
+      now.minute == config.periodic_offset.minute and
+      now.second == config.periodic_offset.second and
       cert_due_for_renewal?(config, now)
   end
 

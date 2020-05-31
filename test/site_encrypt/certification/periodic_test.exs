@@ -25,12 +25,20 @@ defmodule SiteEncrypt.Certification.PeriodicTest do
 
   test "happens on the given date at target times" do
     first_cert = get_cert(TestEndpoint)
+    config = SiteEncrypt.Registry.config(TestEndpoint)
+    hour = config.periodic_offset.hour
 
     Enum.reduce(
-      [0, 8, 16],
+      [hour, hour + 8, hour + 16],
       first_cert,
       fn hour, previous_cert ->
-        {:ok, time} = Time.new(hour, 0, 0)
+        {:ok, time} =
+          Time.new(
+            hour,
+            config.periodic_offset.minute,
+            config.periodic_offset.second
+          )
+
         {:ok, now} = NaiveDateTime.new(renewal_date(), time)
         now = DateTime.from_naive!(now, "Etc/UTC")
         assert Periodic.tick(TestEndpoint, now) == :ok
@@ -44,8 +52,15 @@ defmodule SiteEncrypt.Certification.PeriodicTest do
   test "may happen after the given date" do
     first_cert = get_cert(TestEndpoint)
     date = Date.add(renewal_date(), 1)
+    config = SiteEncrypt.Registry.config(TestEndpoint)
 
-    {:ok, time} = Time.new(0, 0, 0)
+    {:ok, time} =
+      Time.new(
+        config.periodic_offset.hour,
+        config.periodic_offset.minute,
+        config.periodic_offset.second
+      )
+
     {:ok, now} = NaiveDateTime.new(date, time)
     now = DateTime.from_naive!(now, "Etc/UTC")
     assert Periodic.tick(TestEndpoint, now) == :ok
