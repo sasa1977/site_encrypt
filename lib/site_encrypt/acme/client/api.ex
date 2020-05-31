@@ -2,7 +2,16 @@ defmodule SiteEncrypt.Acme.Client.API do
   @moduledoc false
   alias SiteEncrypt.Acme.Client.{Crypto, Http}
 
-  @type session :: %{
+  defmodule Session do
+    @moduledoc false
+    defstruct ~w/http_pool account_key kid directory nonce/a
+
+    defimpl Inspect do
+      def inspect(session, _opts), do: "##{inspect(session.__struct__)}<#{session.directory.url}>"
+    end
+  end
+
+  @type session :: %Session{
           http_pool: pid,
           account_key: JOSE.JWK.t(),
           kid: nil | String.t(),
@@ -11,6 +20,7 @@ defmodule SiteEncrypt.Acme.Client.API do
         }
 
   @type directory :: %{
+          url: String.t(),
           key_change: String.t(),
           new_account: String.t(),
           new_nonce: String.t(),
@@ -39,23 +49,22 @@ defmodule SiteEncrypt.Acme.Client.API do
 
   @spec new_session(pid, String.t(), X509.PrivateKey.t()) :: {:ok, session} | {:error, error}
   def new_session(http_pool, url, account_key) do
-    session = %{
+    session = %Session{
       http_pool: http_pool,
       account_key: account_key,
       kid: nil,
-      directory: nil,
+      directory: %{url: url},
       nonce: nil
     }
 
     with {:ok, response, session} <- http_request(session, :get, url),
          :ok <- validate_response(response) do
       directory =
-        normalize_keys(
-          response.payload,
-          ~w/keyChange newAccount newNonce newOrder revokeCert/
-        )
+        response.payload
+        |> normalize_keys(~w/keyChange newAccount newNonce newOrder revokeCert/)
+        |> Map.merge(session.directory)
 
-      {:ok, %{session | directory: directory}}
+      {:ok, %Session{session | directory: directory}}
     end
   end
 
@@ -73,7 +82,7 @@ defmodule SiteEncrypt.Acme.Client.API do
 
     with {:ok, response, session} <- jws_request(session, :post, url, :jwk, payload) do
       location = :proplists.get_value("location", response.headers)
-      {:ok, %{session | kid: location}}
+      {:ok, %Session{session | kid: location}}
     end
   end
 
@@ -84,7 +93,7 @@ defmodule SiteEncrypt.Acme.Client.API do
 
     with {:ok, response, session} <- jws_request(session, :post, url, :jwk, payload) do
       location = :proplists.get_value("location", response.headers)
-      {:ok, %{session | kid: location}}
+      {:ok, %Session{session | kid: location}}
     end
   end
 
@@ -172,7 +181,7 @@ defmodule SiteEncrypt.Acme.Client.API do
     if is_nil(session.nonce), do: raise("nonce missing")
     headers = [{"content-type", "application/jose+json"}]
     body = jws_body(session, url, id_field, payload)
-    session = %{session | nonce: nil}
+    session = %Session{session | nonce: nil}
 
     case http_request(session, verb, url, headers: headers, body: body) do
       {:ok, %{status: status}, _session} = success when status in 200..299 ->
@@ -220,7 +229,7 @@ defmodule SiteEncrypt.Acme.Client.API do
 
         session =
           case Enum.find(response.headers, &match?({"replay-nonce", _nonce}, &1)) do
-            {"replay-nonce", nonce} -> %{session | nonce: nonce}
+            {"replay-nonce", nonce} -> %Session{session | nonce: nonce}
             nil -> session
           end
 
