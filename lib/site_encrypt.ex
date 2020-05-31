@@ -17,7 +17,8 @@ defmodule SiteEncrypt do
           mode: :auto | :manual,
           client: :native | :certbot,
           backup: String.t() | nil,
-          callback: module
+          callback: module,
+          key_size: pos_integer
         }
 
   @typedoc """
@@ -111,6 +112,11 @@ defmodule SiteEncrypt do
       type: {:one_of, [:debug, :info, :warn, :error]},
       default: :info,
       doc: "Logger level for info messages."
+    ],
+    key_size: [
+      type: :pos_integer,
+      default: 4096,
+      doc: "The size used for generating private keys."
     ]
   ]
 
@@ -148,13 +154,16 @@ defmodule SiteEncrypt do
     db_folder_suffix = if Mix.env() == :test, do: "test", else: ""
 
     quote do
-      unquote(opts)
-      |> NimbleOptions.validate!(unquote(Macro.escape(@certification_schema)))
-      |> Map.new()
-      |> Map.update!(:db_folder, &Path.join(&1, unquote(db_folder_suffix)))
-      |> Map.put_new(:backup, nil)
-      |> Map.put_new(:id, __MODULE__)
-      |> Map.merge(%{mode: unquote(mode), callback: __MODULE__})
+      config =
+        unquote(opts)
+        |> NimbleOptions.validate!(unquote(Macro.escape(@certification_schema)))
+        |> Map.new()
+        |> Map.update!(:db_folder, &Path.join(&1, unquote(db_folder_suffix)))
+        |> Map.put_new(:backup, nil)
+        |> Map.put_new(:id, __MODULE__)
+        |> Map.merge(%{mode: unquote(mode), callback: __MODULE__})
+
+      if SiteEncrypt.local_ca?(config), do: %{config | key_size: 1024}, else: config
     end
   end
 

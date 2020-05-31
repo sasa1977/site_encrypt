@@ -98,6 +98,7 @@ defmodule SiteEncrypt.Certification.Certbot do
       --logs-dir #{log_folder(config)}
       --no-self-upgrade
       --non-interactive
+      --rsa-key-size #{config.key_size}
       #{unless Keyword.get(opts, :verify_server_cert, true), do: "--no-verify-ssl"}
     )
   end

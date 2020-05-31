@@ -36,7 +36,7 @@ defmodule SiteEncrypt.Certification.Native do
         http_pool,
         SiteEncrypt.directory_url(config),
         config.emails,
-        key_size: if(SiteEncrypt.local_ca?(config), do: 1024, else: 4096)
+        key_size: config.key_size
       )
 
     store_account_key!(config, session.account_key)
@@ -58,7 +58,7 @@ defmodule SiteEncrypt.Certification.Native do
         id: config.id,
         domains: config.domains,
         poll_delay: if(SiteEncrypt.local_ca?(config), do: 50, else: :timer.seconds(2)),
-        key_size: if(SiteEncrypt.local_ca?(config), do: 1024, else: 4096),
+        key_size: config.key_size,
         register_challenge: &SiteEncrypt.Registry.register_challenge!(id, &1, &2),
         await_challenge: fn ->
           receive do
