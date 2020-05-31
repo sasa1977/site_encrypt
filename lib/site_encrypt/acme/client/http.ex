@@ -68,8 +68,15 @@ defmodule SiteEncrypt.Acme.Client.Http do
     @impl GenServer
     def handle_call({:request, method, path, headers, body}, client, state) do
       case Mint.HTTP.request(state.conn, method, path, headers, body) do
-        {:ok, conn, req} -> {:noreply, init_req(%{state | conn: conn}, req, client)}
-        {:error, conn, reason} -> {:reply, {:error, reason}, %{state | conn: conn}}
+        {:ok, conn, req} ->
+          {:noreply, init_req(%{state | conn: conn}, req, client)}
+
+        {:error, conn, reason} ->
+          state = %{state | conn: conn}
+
+          if Mint.HTTP.open?(state.conn),
+            do: {:reply, {:error, reason}, state},
+            else: {:stop, :normal, {:error, reason}, state}
       end
     end
 
