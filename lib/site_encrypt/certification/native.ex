@@ -68,10 +68,20 @@ defmodule SiteEncrypt.Certification.Native do
   end
 
   defp store_pems!(config, pems) do
+    timestamp =
+      DateTime.utc_now()
+      |> DateTime.to_string()
+      |> String.replace(~r/[\- \:\.Z]/, "")
+
     Enum.each(
       pems,
       fn {type, content} ->
         store_file!(Path.join(domain_folder(config), "#{type}.pem"), content)
+
+        store_file!(
+          Path.join([domain_folder(config), "archive", timestamp, "#{type}.pem"]),
+          content
+        )
       end
     )
   end
