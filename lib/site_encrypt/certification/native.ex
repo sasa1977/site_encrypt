@@ -19,15 +19,9 @@ defmodule SiteEncrypt.Certification.Native do
 
   @impl Job
   def certify(config, opts) do
-    {:ok, http_pool} = Client.Http.start_link(Keyword.take(opts, [:verify_server_cert]))
-
-    try do
-      case account_key(config) do
-        nil -> new_account(config, http_pool)
-        account_key -> new_cert(config, http_pool, account_key)
-      end
-    after
-      Client.Http.stop(http_pool)
+    case account_key(config) do
+      nil -> new_account(config, opts)
+      account_key -> new_cert(config, account_key, opts)
     end
   end
 
@@ -38,16 +32,18 @@ defmodule SiteEncrypt.Certification.Native do
     SiteEncrypt.log(config, "#{msg} (CA #{URI.parse(SiteEncrypt.directory_url(config)).host})")
   end
 
-  defp new_account(config, http_pool) do
+  defp http_opts(opts), do: Keyword.take(opts, ~w/verify_server_cert/a)
+
+  defp new_account(config, opts) do
     log(config, "Creating new account")
-    session = Client.new_account(http_pool, config.id, SiteEncrypt.directory_url(config))
+    session = Client.new_account(config.id, SiteEncrypt.directory_url(config), http_opts(opts))
     store_account_key!(config, session.account_key)
     create_certificate(config, session)
   end
 
-  defp new_cert(config, http_pool, account_key) do
+  defp new_cert(config, account_key, opts) do
     directory_url = SiteEncrypt.directory_url(config)
-    session = Client.for_existing_account(http_pool, directory_url, account_key)
+    session = Client.for_existing_account(directory_url, account_key, http_opts(opts))
     create_certificate(config, session)
   end
 

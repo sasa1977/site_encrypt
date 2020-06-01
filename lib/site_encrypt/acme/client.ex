@@ -1,5 +1,6 @@
 defmodule SiteEncrypt.Acme.Client do
   @moduledoc false
+  alias SiteEncrypt.HttpClient
   alias SiteEncrypt.Acme.Client.{API, Crypto}
 
   @type keys :: %{
@@ -8,18 +9,18 @@ defmodule SiteEncrypt.Acme.Client do
           chain: String.t()
         }
 
-  @spec new_account(pid, SiteEncrypt.id(), String.t()) :: API.session()
-  def new_account(http_pool, id, directory_url) do
+  @spec new_account(SiteEncrypt.id(), String.t(), HttpClient.opts()) :: API.session()
+  def new_account(id, directory_url, http_opts \\ []) do
     config = SiteEncrypt.Registry.config(id)
     account_key = JOSE.JWK.generate_key({:rsa, config.key_size})
-    session = start_session(http_pool, directory_url, account_key)
+    session = start_session(directory_url, account_key, http_opts)
     {:ok, session} = API.new_account(session, config.emails)
     session
   end
 
-  @spec for_existing_account(pid, String.t(), JOSE.JWK.t()) :: API.session()
-  def for_existing_account(http_pool, directory_url, account_key) do
-    session = start_session(http_pool, directory_url, account_key)
+  @spec for_existing_account(String.t(), JOSE.JWK.t(), HttpClient.opts()) :: API.session()
+  def for_existing_account(directory_url, account_key, http_opts) do
+    session = start_session(directory_url, account_key, http_opts)
     {:ok, session} = API.fetch_kid(session)
     session
   end
@@ -33,8 +34,8 @@ defmodule SiteEncrypt.Acme.Client do
     {%{privkey: Crypto.private_key_to_pem(private_key), cert: cert, chain: chain}, session}
   end
 
-  defp start_session(http_pool, directory_url, account_key) do
-    {:ok, session} = API.new_session(http_pool, directory_url, account_key)
+  defp start_session(directory_url, account_key, http_opts) do
+    {:ok, session} = API.new_session(directory_url, account_key, http_opts)
     {:ok, session} = API.new_nonce(session)
     session
   end

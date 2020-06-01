@@ -1,10 +1,12 @@
 defmodule SiteEncrypt.Acme.Client.API do
   @moduledoc false
-  alias SiteEncrypt.Acme.Client.{Crypto, Http}
+  alias SiteEncrypt.HttpClient
+  alias SiteEncrypt.HttpClient
+  alias SiteEncrypt.Acme.Client.Crypto
 
   defmodule Session do
     @moduledoc false
-    defstruct ~w/http_pool account_key kid directory nonce/a
+    defstruct ~w/http_opts account_key kid directory nonce/a
 
     defimpl Inspect do
       def inspect(session, _opts), do: "##{inspect(session.__struct__)}<#{session.directory.url}>"
@@ -12,7 +14,7 @@ defmodule SiteEncrypt.Acme.Client.API do
   end
 
   @type session :: %Session{
-          http_pool: pid,
+          http_opts: Keyword.t(),
           account_key: JOSE.JWK.t(),
           kid: nil | String.t(),
           directory: nil | directory,
@@ -47,17 +49,10 @@ defmodule SiteEncrypt.Acme.Client.API do
 
   @type status :: :invalid | :pending | :ready | :processing | :valid
 
-  @spec new_session(pid, String.t(), X509.PrivateKey.t()) :: {:ok, session} | {:error, error}
-  def new_session(http_pool, url, account_key) do
-    session = %Session{
-      http_pool: http_pool,
-      account_key: account_key,
-      kid: nil,
-      directory: %{url: url},
-      nonce: nil
-    }
-
-    with {:ok, response, session} <- http_request(session, :get, url),
+  @spec new_session(String.t(), X509.PrivateKey.t(), HttpClient.opts()) ::
+          {:ok, session} | {:error, error}
+  def new_session(directory_url, account_key, http_opts \\ []) do
+    with {response, session} <- initialize_session(http_opts, account_key, directory_url),
          :ok <- validate_response(response) do
       directory =
         response.payload
@@ -70,7 +65,7 @@ defmodule SiteEncrypt.Acme.Client.API do
 
   @spec new_nonce(session) :: {:ok, session} | {:error, error}
   def new_nonce(session) do
-    with {:ok, response, session} <- http_request(session, :head, session.directory.new_nonce),
+    with {response, session} <- http_request(session, :head, session.directory.new_nonce),
          :ok <- validate_response(response),
          do: {:ok, session}
   end
@@ -177,6 +172,18 @@ defmodule SiteEncrypt.Acme.Client.API do
     end
   end
 
+  defp initialize_session(http_opts, account_key, directory_url) do
+    http_request(
+      %Session{
+        http_opts: http_opts,
+        account_key: account_key,
+        directory: %{url: directory_url}
+      },
+      :get,
+      directory_url
+    )
+  end
+
   defp jws_request(session, verb, url, id_field, payload \\ "") do
     if is_nil(session.nonce), do: raise("nonce missing")
     headers = [{"content-type", "application/jose+json"}]
@@ -184,17 +191,14 @@ defmodule SiteEncrypt.Acme.Client.API do
     session = %Session{session | nonce: nil}
 
     case http_request(session, verb, url, headers: headers, body: body) do
-      {:ok, %{status: status}, _session} = success when status in 200..299 ->
-        success
+      {%{status: status} = response, session} when status in 200..299 ->
+        {:ok, response, session}
 
-      {:ok, %{payload: %{"type" => "urn:ietf:params:acme:error:badNonce"}}, session} ->
+      {%{payload: %{"type" => "urn:ietf:params:acme:error:badNonce"}}, session} ->
         jws_request(session, verb, url, id_field, payload)
 
-      {:ok, response, session} ->
+      {response, session} ->
         {:error, response, session}
-
-      error ->
-        error
     end
   end
 
@@ -218,32 +222,29 @@ defmodule SiteEncrypt.Acme.Client.API do
   defp id_map(:kid, session), do: %{"kid" => session.kid}
 
   defp http_request(session, verb, url, opts \\ []) do
-    case Http.request(session.http_pool, verb, url, headers(opts), Keyword.get(opts, :body)) do
-      {:ok, response} ->
-        content_type = :proplists.get_value("content-type", response.headers, "")
+    opts =
+      opts
+      |> Keyword.put_new(:headers, [])
+      |> Keyword.update!(:headers, &[{"user-agent", "site_encrypt native client"} | &1])
+      |> Keyword.merge(session.http_opts)
 
-        payload =
-          if String.starts_with?(content_type, "application/json") or
-               String.starts_with?(content_type, "application/problem+json"),
-             do: Jason.decode!(response.body)
+    response = HttpClient.request(verb, url, opts)
 
-        session =
-          case Enum.find(response.headers, &match?({"replay-nonce", _nonce}, &1)) do
-            {"replay-nonce", nonce} -> %Session{session | nonce: nonce}
-            nil -> session
-          end
+    content_type = :proplists.get_value("content-type", response.headers, "")
 
-        response = Map.put(response, :payload, payload)
+    payload =
+      if String.starts_with?(content_type, "application/json") or
+           String.starts_with?(content_type, "application/problem+json"),
+         do: Jason.decode!(response.body)
 
-        {:ok, response, session}
+    session =
+      case Enum.find(response.headers, &match?({"replay-nonce", _nonce}, &1)) do
+        {"replay-nonce", nonce} -> %Session{session | nonce: nonce}
+        nil -> session
+      end
 
-      {:error, reason} ->
-        {:error, reason, session}
-    end
+    {Map.put(response, :payload, payload), session}
   end
-
-  defp headers(opts),
-    do: [{"user-agent", "site_encrypt native client"} | Keyword.get(opts, :headers, [])]
 
   defp parse_status!("invalid"), do: :invalid
   defp parse_status!("pending"), do: :pending

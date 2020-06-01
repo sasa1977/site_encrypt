@@ -41,8 +41,7 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
 
   @impl GenServer
   def init({config, challenge_data}) do
-    {:ok, http} = Parent.GenServer.start_child(SiteEncrypt.Acme.Client.Http)
-    state = Map.merge(challenge_data, %{parent: self(), attempts: 1, config: config, http: http})
+    state = Map.merge(challenge_data, %{parent: self(), attempts: 1, config: config})
     start_challenge(state)
     {:ok, state}
   end
@@ -80,7 +79,6 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
 
   defp challenge(state) do
     if challenge_domains(
-         state.http,
          state.order.domains,
          state.order.token,
          state.dns,
@@ -95,9 +93,9 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
     end
   end
 
-  defp challenge_domains(http, domains, token, dns, key_thumbprint) do
+  defp challenge_domains(domains, token, dns, key_thumbprint) do
     domains
-    |> Task.async_stream(&challenge_domain(http, http_server(&1, dns), token, key_thumbprint))
+    |> Task.async_stream(&challenge_domain(http_server(&1, dns), token, key_thumbprint))
     |> Enum.map(fn
       {:ok, result} -> result
       _ -> :error
@@ -111,8 +109,8 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
     end
   end
 
-  defp challenge_domain(http, url, token, key_thumbprint) do
-    with {:ok, %{status: 200, body: response}} <- http_request(http, url, token),
+  defp challenge_domain(url, token, key_thumbprint) do
+    with %{status: 200, body: response} <- http_request(url, token),
          ^response <- "#{token}.#{key_thumbprint}" do
       :ok
     else
@@ -120,9 +118,9 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
     end
   end
 
-  defp http_request(http, server, token) do
+  defp http_request(server, token) do
     url = "http://#{server}/.well-known/acme-challenge/#{token}"
-    SiteEncrypt.Acme.Client.Http.request(http, :get, url, [], "")
+    SiteEncrypt.HttpClient.request(:get, url, verify_server_cert: false)
   end
 
   defp via(config, challenge_data),
