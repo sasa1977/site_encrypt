@@ -6,14 +6,8 @@ defmodule SiteEncrypt.Registry do
 
   @spec config(SiteEncrypt.id()) :: SiteEncrypt.config()
   def config(id) do
-    [{_pid, config}] = Registry.lookup(__MODULE__, {id, :site})
+    [{_pid, config}] = Registry.lookup(__MODULE__, {id, :root})
     config
-  end
-
-  @spec register_main_site(SiteEncrypt.config()) :: :ok | {:error, {:already_registered, pid}}
-  def register_main_site(config) do
-    with {:ok, _pid} <- Registry.register(__MODULE__, {config.id, :site}, config),
-         do: :ok
   end
 
   @spec register_challenge(SiteEncrypt.id(), String.t(), String.t()) :: :ok
@@ -48,6 +42,8 @@ defmodule SiteEncrypt.Registry do
       timeout -> false
     end
   end
+
+  def register(id, role, value \\ nil), do: Registry.register(__MODULE__, {id, role}, value)
 
   def name(id, role), do: {:via, Registry, {__MODULE__, {id, role}}}
 

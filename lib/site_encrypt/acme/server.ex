@@ -2,11 +2,9 @@ defmodule SiteEncrypt.Acme.Server do
   @moduledoc false
   alias SiteEncrypt.Acme.Server.Account
 
-  @type site :: String.t()
+  @type start_opts :: [dns: dns, port: pos_integer()]
+  @type config :: %{site: String.t(), site_uri: URI.t(), dns: dns}
   @type dns :: %{String.t() => String.t()}
-  @type config :: %{site: site, site_uri: URI.t(), dns: dns}
-  @type start_opts :: [config: config, endpoint: Supervisor.child_spec()]
-
   @type method :: :get | :head | :put | :post | :delete
   @type handle_response :: %{status: status, headers: headers, body: body}
   @type status :: pos_integer
@@ -14,24 +12,22 @@ defmodule SiteEncrypt.Acme.Server do
   @type body :: binary
   @type domains :: [String.t()]
 
-  @spec child_spec(start_opts) :: Supervisor.child_spec()
-  def child_spec(opts),
-    do: %{id: __MODULE__, start: {__MODULE__, :start_link, [opts]}, type: :supervisor}
-
   @spec start_link(start_opts) :: Supervisor.on_start()
   def start_link(opts) do
+    port = Keyword.fetch!(opts, :port)
+    config = config(site: "https://localhost:#{port}", dns: Keyword.fetch!(opts, :dns))
+
     Supervisor.start_link(
       [
-        {SiteEncrypt.Acme.Server.Db, Keyword.fetch!(opts, :config)},
-        {SiteEncrypt.Acme.Server.Challenges, Keyword.fetch!(opts, :config)},
-        Keyword.fetch!(opts, :endpoint)
+        {SiteEncrypt.Acme.Server.Db, config},
+        {SiteEncrypt.Acme.Server.Challenges, config},
+        endpoint_spec(config, port)
       ],
       strategy: :one_for_one
     )
   end
 
-  @spec config(site: site, dns: dns) :: config
-  def config(opts) do
+  defp config(opts) do
     site_uri = opts |> Keyword.fetch!(:site) |> URI.parse()
     opts |> Map.new() |> Map.put(:site_uri, site_uri)
   end
@@ -235,5 +231,31 @@ defmodule SiteEncrypt.Acme.Server do
       end
 
     {account, SiteEncrypt.Acme.Server.Account.new_order(config, account, domains)}
+  end
+
+  @doc false
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      type: :supervisor,
+      start: {__MODULE__, :start_link, [opts]}
+    }
+  end
+
+  defp endpoint_spec(config, port) do
+    key = X509.PrivateKey.new_rsa(1024)
+    cert = X509.Certificate.self_signed(key, "/C=US/ST=CA/O=Acme/CN=ECDSA Root CA")
+
+    adapter_opts = [
+      plug: {SiteEncrypt.Acme.Server.Plug, config},
+      scheme: :https,
+      key: {:PrivateKeyInfo, X509.PrivateKey.to_der(key, wrap: true)},
+      cert: X509.Certificate.to_der(cert),
+      transport_options: [num_acceptors: 1],
+      ref: :"#{__MODULE__}_#{port}",
+      options: [port: port]
+    ]
+
+    Plug.Cowboy.child_spec(adapter_opts)
   end
 end

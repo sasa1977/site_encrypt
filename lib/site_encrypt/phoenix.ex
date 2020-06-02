@@ -11,8 +11,8 @@ defmodule SiteEncrypt.Phoenix do
 
   """
 
-  @doc false
-  use Supervisor
+  use Parent.GenServer
+  alias SiteEncrypt.{Acme, Registry}
 
   @doc """
   Merges paths to key and certificates to the `:https` configuration of the endpoint config.
@@ -68,86 +68,76 @@ defmodule SiteEncrypt.Phoenix do
   end
 
   @doc false
-  def start_link(endpoint) do
-    config = endpoint.certification()
-
-    # The supervision tree is one layer deeper for easier testing. We're starting the site
-    # supervisor as a single child of the root supervisor. All other processes (e.g. endpoint,
-    # certification, internal acme server) are running under the site supervisor.
-    #
-    # This supervision structure allows us to easily stop and restart the entire site by stopping
-    # and starting the site supervisor.
-    Supervisor.start_link(
-      [
-        %{
-          id: :site,
-          type: :supervisor,
-          start: {Supervisor, :start_link, [__MODULE__, {config, endpoint}]}
-        }
-      ],
-      strategy: :one_for_one,
-      name: SiteEncrypt.Registry.name(config.id, :root)
-    )
-  end
+  def start_link(endpoint), do: Parent.GenServer.start_link(__MODULE__, endpoint)
 
   @doc false
   def restart_site(id, fun) do
-    root_pid = SiteEncrypt.Registry.whereis(id, :root)
-    Supervisor.terminate_child(root_pid, :site)
+    GenServer.call(Registry.name(id, :root), :stop_site)
     fun.()
-    Supervisor.restart_child(root_pid, :site)
+    GenServer.call(Registry.name(id, :root), :start_site)
     :ok
   end
 
-  @impl Supervisor
-  def init({config, endpoint}) do
-    :ok = SiteEncrypt.Registry.register_main_site(config)
+  @impl GenServer
+  def init(endpoint) do
+    config = endpoint.certification()
+    Registry.register(config.id, :root, config)
+    start_site(config, endpoint)
+    {:ok, %{config: config, endpoint: endpoint}}
+  end
+
+  @impl GenServer
+  def handle_call(:stop_site, _from, state) do
+    Parent.GenServer.shutdown_all()
+    {:reply, :ok, state}
+  end
+
+  def handle_call(:start_site, _from, state) do
+    start_site(state.config, state.endpoint)
+    {:reply, :ok, state}
+  end
+
+  @impl Parent.GenServer
+  # Naive one-for-all with max_restarts of 0. If any of site services stop, we'll stop all remaining
+  # siblings, effectively escalating restart to the parent supervisor.
+  def handle_child_terminated(_id, _meta, _pid, _reason, state), do: {:stop, :shutdown, state}
+
+  defp start_site(config, endpoint) do
+    # Using parent as a supervisor, because we have a more dynamic startup flow.
+    # We have to start the endpoint first, and then fetch its config to figure out if its serving
+    # traffic. Based on that, and other options, we're determining whether additional processes,
+    # such as local ACME server and certifier need to be started.
+    #
+    # Additionally, this approach allows a simple implementation of stop and restart site.
+
     SiteEncrypt.initialize_certs(config)
-    Supervisor.init([endpoint, certification_spec(config, endpoint)], strategy: :one_for_one)
-  end
 
-  defp certification_spec(config, endpoint) do
-    # The remaining processes are started via `start_certification`. This is needed so we
-    # can get the fully shaped endpoint config, and determine if we need to start certification
-    # processes.
-    %{
-      id: :certification,
-      start: {__MODULE__, :start_certification, [config, endpoint]},
-      type: :supervisor
-    }
-  end
+    start_child!(endpoint)
 
-  @doc false
-  def start_certification(config, endpoint) do
-    server? =
-      with nil <- endpoint.config(:server),
-           do: Application.get_env(:phoenix, :serve_endpoints, false)
+    if server?(endpoint) do
+      with %{directory_url: {:internal, acme_server_config}} <- config do
+        port = Keyword.fetch!(acme_server_config, :port)
+        SiteEncrypt.log(config, "Running local ACME server at port #{port}")
+        start_child!({Acme.Server, port: port, dns: dns(config, endpoint)})
+      end
 
-    if server? do
-      Supervisor.start_link(
-        Enum.reject(
-          [acme_server_spec(config, endpoint), {SiteEncrypt.Certification, config}],
-          &is_nil/1
-        ),
-        strategy: :one_for_one
-      )
-    else
-      # we won't start certification if the endpoint is not serving requests
-      :ignore
+      start_child!({SiteEncrypt.Certification, config})
     end
   end
 
-  defp acme_server_spec(%{directory_url: url}, _endpoint) when is_binary(url), do: nil
+  defp start_child!(child_spec),
+    do: {:ok, _} = Parent.GenServer.start_child(Supervisor.child_spec(child_spec, []))
 
-  defp acme_server_spec(%{directory_url: {:internal, acme_server_config}} = config, endpoint) do
-    port = Keyword.fetch!(acme_server_config, :port)
-    SiteEncrypt.log(config, "Running local ACME server at port #{port}")
-    SiteEncrypt.Acme.Server.Standalone.child_spec(port: port, dns: dns(config, endpoint))
+  defp server?(endpoint) do
+    with nil <- endpoint.config(:server),
+         do: Application.get_env(:phoenix, :serve_endpoints, false)
   end
 
   defp dns(config, endpoint) do
-    config.domains
-    |> Enum.map(&{&1, fn -> "localhost:#{endpoint.config(:http) |> Keyword.fetch!(:port)}" end})
-    |> Enum.into(%{})
+    Enum.into(
+      config.domains,
+      %{},
+      &{&1, fn -> "localhost:#{endpoint.config(:http) |> Keyword.fetch!(:port)}" end}
+    )
   end
 end
