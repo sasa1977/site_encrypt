@@ -46,7 +46,7 @@ defmodule SiteEncrypt.Phoenix.Test do
       ExUnit.Callbacks.on_exit(fn -> Application.put_env(app, endpoint, endpoint_config) end)
     end)
 
-    SiteEncrypt.force_renew(endpoint)
+    :ok = SiteEncrypt.force_certify(endpoint)
   end
 
   @doc """

@@ -136,10 +136,48 @@ $ iex -S mix phx.server
 [info]  Running local ACME server at port 4002
 [info]  Ordering a new certificate for domain mysite.com
 [info]  New certificate for domain mysite.com obtained
-[info]  Certificate successfully obtained! It is valid until 3019-09-27. Next renewal is scheduled for 3019-08-28.
+[info]  Certificate successfully obtained!
 ```
 
 And visit your certified site at https://localhost:4001
+
+## Testing in production
+
+In general, the configuration above should work out of the box in production, as long as the domain is correctly setup, and ports properly forwarded, so the HTTP site is externally available at port 80.
+
+If you want a more manual first deploy test, here's how you can do it:
+
+1. Explicitly set `mode: :manual` in `certification/0`. This means that the site won't automatically certify itself. However, during the first boot it will generate a self-signed certificate.
+
+2. Deploy the site and verify that it's externally reachable via HTTP on port 80.
+
+3. Start a remote `iex` shell session to the running system.
+
+4. Perform a trial certification through the staging Let's Encrypt CA:
+
+    ```elixir
+    iex> SiteEncrypt.dry_certify(
+           MySystemWeb.Endpoint,
+           directory_url: "https://acme-staging-v02.api.letsencrypt.org/directory"
+         )
+    ```
+
+  Keep in mind that this can be only invoked in the remote `iex` shell session inside the running system.
+
+  If the certification succeeds, the function will return the key and the certificate. These files won't be stored on disk, and they won't be used by the endpoint.
+
+5. If the trial certification succeeded, you can proceed to start the real certification as follows:
+
+    ```elixir
+    iex> SiteEncrypt.force_certify(MySystemWeb.Endpoint)
+    ```
+
+  Unlike the trial certification, this function will go to the CA as configured by the `certification/0` callback in the endpoint. The key and the certificate files will be stored on the disk, and the site will immediately used them. Therefore, if this function succeeds, you can visit your site via HTTPS.
+
+6. If all went well, remove the `:mode` setting from the `certification/0` callback and redeploy your system.
+
+__Note__: be careful not to invoke these functions too frequently, because you might trip some rate limit on Let's Encrypt. See [here](https://letsencrypt.org/docs/rate-limits/) for more details.
+
 
 ## License
 

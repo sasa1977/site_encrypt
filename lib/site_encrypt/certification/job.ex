@@ -7,7 +7,7 @@ defmodule SiteEncrypt.Certification.Job do
   @callback pems(SiteEncrypt.config()) :: {:ok, SiteEncrypt.pems()} | :error
   @callback full_challenge(SiteEncrypt.config(), String.t()) :: String.t()
 
-  @callback certify(SiteEncrypt.config(), force_renewal: boolean) :: :ok | :error
+  @callback certify(SiteEncrypt.config(), force_certifyal: boolean) :: :ok | :error
 
   @spec certify(SiteEncrypt.config()) :: {:ok, SiteEncrypt.pems()} | :error
   def certify(config) do
@@ -55,7 +55,10 @@ defmodule SiteEncrypt.Certification.Job do
   end
 
   @impl Parent.GenServer
-  def handle_child_terminated(:job, _meta, _pid, _reason, state), do: {:stop, :normal, state}
+  def handle_child_terminated(:job, _meta, _pid, reason, state) do
+    shutdown_reason = if reason == :normal, do: :normal, else: :job_error
+    {:stop, shutdown_reason, state}
+  end
 
   defp certify_and_apply(config) do
     with {:ok, _pems} <- certify(config) do

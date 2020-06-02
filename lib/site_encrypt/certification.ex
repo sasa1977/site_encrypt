@@ -26,7 +26,7 @@ defmodule SiteEncrypt.Certification do
     end
   end
 
-  @spec run_renew(SiteEncrypt.config()) :: :ok
+  @spec run_renew(SiteEncrypt.config()) :: :ok | :error
   def run_renew(config) do
     pid =
       case start_renew(config) do
@@ -37,7 +37,8 @@ defmodule SiteEncrypt.Certification do
     mref = Process.monitor(pid)
 
     receive do
-      {:DOWN, ^mref, :process, ^pid, _reason} -> :ok
+      {:DOWN, ^mref, :process, ^pid, reason} ->
+        if reason == :normal, do: :ok, else: :error
     end
   end
 

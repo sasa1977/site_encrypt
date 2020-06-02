@@ -20,7 +20,7 @@ defmodule SiteEncrypt.PebbleTest do
     clean_restart(TestEndpoint)
     first_cert = get_cert(TestEndpoint)
 
-    assert SiteEncrypt.force_renew(TestEndpoint) == :ok
+    assert SiteEncrypt.force_certify(TestEndpoint) == :ok
 
     second_cert = get_cert(TestEndpoint)
     refute second_cert == first_cert

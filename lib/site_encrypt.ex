@@ -122,6 +122,18 @@ defmodule SiteEncrypt do
       type: :pos_integer,
       default: 4096,
       doc: "The size used for generating private keys."
+    ],
+    mode: [
+      type: {:one_of, [:auto, :manual]},
+      default: :auto,
+      doc: """
+      When set to `:auto`, the certificate will be automatically created or renewed when needed.
+
+      When set to `:manual`, you need to start the certification manually, using functions such as
+      `SiteEncrypt.force_certify/1` or `SiteEncrypt.dry_certify/2`. This can be useful for the
+      first deploy, where you want to manually test the certification. In `:test` mix environment
+      the mode is always `:manual`.
+      """
     ]
   ]
 
@@ -153,21 +165,25 @@ defmodule SiteEncrypt do
   #{NimbleOptions.docs(@certification_schema)}
   """
   defmacro configure(opts) do
-    mode = if Mix.env() == :test, do: :manual, else: :auto
+    overrides = if Mix.env() == :test, do: %{mode: :manual}, else: %{}
 
     # adding a suffix in test env to avoid removal of dev certificates during tests
     db_folder_suffix = if Mix.env() == :test, do: "test", else: ""
 
     quote do
-      config =
+      defaults = %{id: __MODULE__, backup: nil}
+
+      user_config =
         unquote(opts)
         |> NimbleOptions.validate!(unquote(Macro.escape(@certification_schema)))
         |> Map.new()
         |> Map.update!(:db_folder, &Path.join(&1, unquote(db_folder_suffix)))
-        |> Map.put_new(:backup, nil)
-        |> Map.put_new(:id, __MODULE__)
-        |> Map.merge(%{mode: unquote(mode), callback: __MODULE__})
-        |> Map.put(:periodic_offset, Certification.Periodic.offset())
+
+      config =
+        defaults
+        |> Map.merge(user_config)
+        |> Map.merge(%{callback: __MODULE__, periodic_offset: Certification.Periodic.offset()})
+        |> Map.merge(unquote(Macro.escape(overrides)))
 
       if SiteEncrypt.local_ca?(config), do: %{config | key_size: 1024}, else: config
     end
@@ -186,23 +202,29 @@ defmodule SiteEncrypt do
   end
 
   @doc """
-  Force renews the certificate for the given site.
+  Unconditionally obtains the new certificate for the site.
 
   Be very careful when invoking this function in production, because you might trip some rate
   limit at the CA server (see [here](https://letsencrypt.org/docs/rate-limits/) for Let's
   Encrypt limits).
   """
-  @spec force_renew(id) :: :ok
-  def force_renew(id), do: Certification.run_renew(SiteEncrypt.Registry.config(id))
+  @spec force_certify(id) :: :ok | :error
+  def force_certify(id), do: Certification.run_renew(SiteEncrypt.Registry.config(id))
 
   @doc """
-  Generates a new certificate for the given site without applying it.
+  Generates a new throwaway certificate for the given site.
 
-  You can optionally provide a different directory_url. This can be useful to test certification
-  through another CA or through Let's Encrypt staging site.
+  This function will perform the full certification at the given CA server. The new certificate
+  won't be used by the site, nor stored on disk. This is mostly useful to test the certification
+  through the staging CA server from the production server, which can be done as follows:
+
+      SiteEncrypt.dry_certify(
+        MySystemWeb.Endpoint,
+        directory_url: "https://acme-staging-v02.api.letsencrypt.org/directory"
+      )
   """
-  @spec new_certificate(id, directory_url: String.t()) :: {:ok, pems} | :error
-  def new_certificate(id, opts \\ []) do
+  @spec dry_certify(id, directory_url: String.t()) :: {:ok, pems} | :error
+  def dry_certify(id, opts \\ []) do
     id
     |> SiteEncrypt.Registry.config()
     |> Map.update!(:directory_url, &Keyword.get(opts, :directory_url, &1))

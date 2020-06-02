@@ -19,7 +19,7 @@ defmodule SiteEncrypt.Certification.Periodic do
   def child_spec(config) do
     Periodic.child_spec(
       id: __MODULE__.Scheduler,
-      run: fn -> SiteEncrypt.force_renew(config.id) end,
+      run: fn -> SiteEncrypt.force_certify(config.id) end,
       every: :timer.seconds(1),
       when: fn -> time_to_renew?(config, utc_now(config)) end,
       on_overlap: :ignore,

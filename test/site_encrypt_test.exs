@@ -19,15 +19,15 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
       assert get_cert(TestEndpoint).domains == ~w/localhost foo.localhost/
     end
 
-    test "force_renew" do
+    test "force_certify" do
       first_cert = get_cert(TestEndpoint)
-      assert SiteEncrypt.force_renew(TestEndpoint) == :ok
+      assert SiteEncrypt.force_certify(TestEndpoint) == :ok
       assert get_cert(TestEndpoint) != first_cert
     end
 
     test "new_cert" do
       first_cert = get_cert(TestEndpoint)
-      assert {:ok, _pems} = SiteEncrypt.new_certificate(TestEndpoint)
+      assert {:ok, _pems} = SiteEncrypt.dry_certify(TestEndpoint)
       assert get_cert(TestEndpoint) == first_cert
     end
 
@@ -46,7 +46,7 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
       assert get_cert(TestEndpoint) == first_cert
 
       # make sure that renewal is still working correctly
-      assert SiteEncrypt.force_renew(TestEndpoint) == :ok
+      assert SiteEncrypt.force_certify(TestEndpoint) == :ok
       refute get_cert(TestEndpoint) == first_cert
     end
 

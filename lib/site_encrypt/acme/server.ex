@@ -15,7 +15,8 @@ defmodule SiteEncrypt.Acme.Server do
   @spec start_link(start_opts) :: Supervisor.on_start()
   def start_link(opts) do
     port = Keyword.fetch!(opts, :port)
-    config = config(site: "https://localhost:#{port}", dns: Keyword.fetch!(opts, :dns))
+    site = "https://localhost:#{port}"
+    config = %{site: site, site_uri: URI.parse(site), dns: Keyword.fetch!(opts, :dns)}
 
     Supervisor.start_link(
       [
@@ -25,11 +26,6 @@ defmodule SiteEncrypt.Acme.Server do
       ],
       strategy: :one_for_one
     )
-  end
-
-  defp config(opts) do
-    site_uri = opts |> Keyword.fetch!(:site) |> URI.parse()
-    opts |> Map.new() |> Map.put(:site_uri, site_uri)
   end
 
   @spec resource_path(config, String.t()) :: {:ok, String.t()} | :error
