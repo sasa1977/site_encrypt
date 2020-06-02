@@ -1,4 +1,6 @@
 defmodule SiteEncrypt do
+  @moduledoc "Functions for interacting with sites managed by SiteEncrypt."
+
   require Logger
 
   alias SiteEncrypt.Certification
