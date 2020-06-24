@@ -12,12 +12,6 @@ defmodule SiteEncrypt.Acme.Client do
   """
   alias SiteEncrypt.Acme.Client.{API, Crypto}
 
-  @type keys :: %{
-          privkey: String.t(),
-          cert: String.t(),
-          chain: String.t()
-        }
-
   @doc "Creates the new account."
   @spec new_account(SiteEncrypt.id(), API.session_opts()) :: API.session()
   def new_account(id, session_opts \\ []) do
@@ -40,9 +34,11 @@ defmodule SiteEncrypt.Acme.Client do
   @doc """
   Obtains the new certificate.
 
-  The obtained certificate will not be applied to the endpoint or stored to disk.
+  The obtained certificate will not be applied to the endpoint or stored to disk. If you want to
+  apply the new certificate to the endpoint, you can pass the returned pems to the function
+  `SiteEncrypt.set_certificate/2`.
   """
-  @spec create_certificate(API.session(), SiteEncrypt.id()) :: {keys, API.session()}
+  @spec create_certificate(API.session(), SiteEncrypt.id()) :: {SiteEncrypt.pems(), API.session()}
   def create_certificate(session, id) do
     config = SiteEncrypt.Registry.config(id)
     {:ok, order, session} = API.new_order(session, config.domains)

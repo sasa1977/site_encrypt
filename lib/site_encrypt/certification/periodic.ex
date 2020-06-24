@@ -52,8 +52,7 @@ defmodule SiteEncrypt.Certification.Periodic do
 
       {:ok, pems} ->
         {:Validity, _from, to} =
-          pems
-          |> Keyword.fetch!(:cert)
+          pems.cert
           |> X509.Certificate.from_pem!()
           |> X509.Certificate.validity()
 

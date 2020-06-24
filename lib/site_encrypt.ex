@@ -24,7 +24,7 @@ defmodule SiteEncrypt do
           periodic_offset: Certification.Periodic.offset()
         }
 
-  @type pems :: [privkey: String.t(), cert: String.t(), chain: String.t()]
+  @type pems :: %{privkey: String.t(), cert: String.t(), chain: String.t()}
 
   @typedoc """
   Uniquely identifies the site certified via site_encrypt.
@@ -222,6 +222,9 @@ defmodule SiteEncrypt do
         MySystemWeb.Endpoint,
         directory_url: "https://acme-staging-v02.api.letsencrypt.org/directory"
       )
+
+  If for some reasons you want to apply the certificate to the site, you can pass the returned
+  pems to `set_certificate/2`.
   """
   @spec dry_certify(id, directory_url: String.t()) :: {:ok, pems} | :error
   def dry_certify(id, opts \\ []) do
@@ -229,6 +232,25 @@ defmodule SiteEncrypt do
     |> SiteEncrypt.Registry.config()
     |> Map.update!(:directory_url, &Keyword.get(opts, :directory_url, &1))
     |> SiteEncrypt.Certification.Job.certify()
+  end
+
+  @doc """
+  Sets the new site certificate.
+
+  This operation doesn't persist the certificate in the client storage. As a result, if the client
+  previously obtained and stored a valid certificate, that certificate will be used after the
+  endpoint is restarted.
+  """
+  @spec set_certificate(id, pems) :: :ok
+  def set_certificate(id, pems) do
+    config = SiteEncrypt.Registry.config(id)
+    store_pems(config, pems)
+    :ssl.clear_pem_cache()
+
+    unless is_nil(config.backup), do: SiteEncrypt.Certification.backup(config)
+    config.callback.handle_new_cert()
+
+    :ok
   end
 
   @doc false
@@ -264,8 +286,7 @@ defmodule SiteEncrypt do
     end
   end
 
-  @doc false
-  def store_pems(config, keys) do
+  defp store_pems(config, keys) do
     Enum.each(
       keys,
       fn {name, content} ->

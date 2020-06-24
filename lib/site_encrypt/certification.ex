@@ -82,8 +82,8 @@ defmodule SiteEncrypt.Certification do
           [:compressed, cwd: to_char_list(config.db_folder)]
         )
 
-      with {:ok, _keys} <- SiteEncrypt.client(config).pems(config) do
-        SiteEncrypt.Certification.Job.post_certify(config)
+      with {:ok, pems} <- SiteEncrypt.client(config).pems(config) do
+        SiteEncrypt.set_certificate(config.id, pems)
         SiteEncrypt.log(config, "certificates for #{hd(config.domains)} restored")
       end
     end

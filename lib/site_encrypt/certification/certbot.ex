@@ -19,7 +19,7 @@ defmodule SiteEncrypt.Certification.Certbot do
     end)
     |> Enum.split_with(&is_nil/1)
     |> case do
-      {[], pems} -> {:ok, pems}
+      {[], pems} -> {:ok, Map.new(pems)}
       {[_ | _], _} -> :error
     end
   end

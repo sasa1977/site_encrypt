@@ -8,8 +8,9 @@ defmodule SiteEncrypt.Certification.Native do
   @impl Job
   def pems(config) do
     {:ok,
-     Enum.map(
+     Enum.into(
        ~w/privkey cert chain/a,
+       %{},
        &{&1, File.read!(Path.join(domain_folder(config), "#{&1}.pem"))}
      )}
   catch

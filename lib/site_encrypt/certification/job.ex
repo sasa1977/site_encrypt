@@ -31,18 +31,6 @@ defmodule SiteEncrypt.Certification.Job do
     )
   end
 
-  @spec post_certify(SiteEncrypt.config()) :: :ok
-  def post_certify(config) do
-    {:ok, keys} = SiteEncrypt.client(config).pems(config)
-    SiteEncrypt.store_pems(config, keys)
-    :ssl.clear_pem_cache()
-
-    unless is_nil(config.backup), do: SiteEncrypt.Certification.backup(config)
-    config.callback.handle_new_cert()
-
-    :ok
-  end
-
   @impl GenServer
   def init(config) do
     Parent.GenServer.start_child(%{
@@ -61,7 +49,7 @@ defmodule SiteEncrypt.Certification.Job do
   end
 
   defp certify_and_apply(config) do
-    with {:ok, _pems} <- certify(config) do
+    with {:ok, pems} <- certify(config) do
       valid_until = SiteEncrypt.Certification.Periodic.cert_valid_until(config)
       renewal_date = SiteEncrypt.Certification.Periodic.renewal_date(config)
 
@@ -70,7 +58,7 @@ defmodule SiteEncrypt.Certification.Job do
         "Next renewal is scheduled for #{renewal_date}. "
       ])
 
-      post_certify(config)
+      SiteEncrypt.set_certificate(config.id, pems)
     end
   end
 end
