@@ -1,5 +1,15 @@
 defmodule SiteEncrypt.Acme.Client do
-  @moduledoc false
+  @moduledoc """
+  ACME related functions for endpoints managed by `SiteEncrypt`.
+
+  This module exposes higher-level ACME client-side scenarios, such as new account creation, and
+  certification. Normally these functions are invoked automatically by `SiteEncrypt` processes.
+
+  The functions in this module operate on a running endpoint managed by `SiteEncrypt`. For Phoenix
+  this means that the endpoint must be started through `SiteEncrypt.Phoenix`.
+
+  See also `SiteEncrypt.Acme.Client.API` for details about API sessions and lower level API.
+  """
   alias SiteEncrypt.Acme.Client.{API, Crypto}
 
   @type keys :: %{
@@ -8,22 +18,30 @@ defmodule SiteEncrypt.Acme.Client do
           chain: String.t()
         }
 
-  @spec new_account(SiteEncrypt.id(), String.t(), API.session_opts()) :: API.session()
-  def new_account(id, directory_url, session_opts \\ []) do
+  @doc "Creates the new account."
+  @spec new_account(SiteEncrypt.id(), API.session_opts()) :: API.session()
+  def new_account(id, session_opts \\ []) do
     config = SiteEncrypt.Registry.config(id)
     account_key = JOSE.JWK.generate_key({:rsa, config.key_size})
-    session = start_session(directory_url, account_key, session_opts)
+    session = start_session(SiteEncrypt.directory_url(config), account_key, session_opts)
     {:ok, session} = API.new_account(session, config.emails)
     session
   end
 
-  @spec for_existing_account(String.t(), JOSE.JWK.t(), API.session_opts()) :: API.session()
-  def for_existing_account(directory_url, account_key, session_opts) do
-    session = start_session(directory_url, account_key, session_opts)
+  @doc "Returns `API` session for the existing account."
+  @spec for_existing_account(SiteEncrypt.id(), JOSE.JWK.t(), API.session_opts()) :: API.session()
+  def for_existing_account(id, account_key, session_opts) do
+    config = SiteEncrypt.Registry.config(id)
+    session = start_session(SiteEncrypt.directory_url(config), account_key, session_opts)
     {:ok, session} = API.fetch_kid(session)
     session
   end
 
+  @doc """
+  Obtains the new certificate.
+
+  The obtained certificate will not be applied to the endpoint or stored to disk.
+  """
   @spec create_certificate(API.session(), SiteEncrypt.id()) :: {keys, API.session()}
   def create_certificate(session, id) do
     config = SiteEncrypt.Registry.config(id)

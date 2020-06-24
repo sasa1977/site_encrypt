@@ -32,18 +32,17 @@ defmodule SiteEncrypt.Certification.Native do
     SiteEncrypt.log(config, "#{msg} (CA #{URI.parse(SiteEncrypt.directory_url(config)).host})")
   end
 
-  defp http_opts(opts), do: Keyword.take(opts, ~w/verify_server_cert/a)
+  defp session_opts(opts), do: Keyword.take(opts, ~w/verify_server_cert/a)
 
   defp new_account(config, opts) do
     log(config, "Creating new account")
-    session = Client.new_account(config.id, SiteEncrypt.directory_url(config), http_opts(opts))
+    session = Client.new_account(config.id, session_opts(opts))
     store_account_key!(config, session.account_key)
     create_certificate(config, session)
   end
 
   defp new_cert(config, account_key, opts) do
-    directory_url = SiteEncrypt.directory_url(config)
-    session = Client.for_existing_account(directory_url, account_key, http_opts(opts))
+    session = Client.for_existing_account(config.id, account_key, session_opts(opts))
     create_certificate(config, session)
   end
 

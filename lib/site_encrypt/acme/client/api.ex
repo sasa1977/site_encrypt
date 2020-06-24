@@ -83,7 +83,7 @@ defmodule SiteEncrypt.Acme.Client.API do
 
   Note that this function will make an in-process GET HTTP request to the given directory URL.
   """
-  @spec new_session(String.t(), X509.PrivateKey.t(), session_opts) ::
+  @spec new_session(String.t(), JOSE.JWK.t(), session_opts) ::
           {:ok, session} | {:error, error}
   def new_session(directory_url, account_key, http_opts \\ []) do
     with {response, session} <- initialize_session(http_opts, account_key, directory_url),
