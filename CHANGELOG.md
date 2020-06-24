@@ -2,11 +2,17 @@
 
 ## 0.3.0
 
+### Additions and non-breaking changes
+
+- Exposed lower-level ACME client API functions through `SiteEncrypt.Acme.Client` and `SiteEncrypt.Acme.Client.API`.
+- Native client keeps the history of old keys.
+- Key size is configurable, with the default of 4096.
+- Added support for manual production testing through `SiteEncrypt.dry_certify/2`. See "Testing in production" section in readme for details.
+- Renewal happens at a random time of day to avoid possible spikes on CA.
+
 ### Breaking changes
 
 - The internal folders structure has been changed. If you're running a site_encrypt system in production and using the certbot client, you need to create the folder `acme-v02.api.letsencrypt.org` (assuming you're using Let's Encrypt production) under `db_folder/certbot`, and then recursively copy the contents of `db_folder/certbot` into the new folder. If you're using the native client, you don't need to do anything.
-
-folder called `certbot` inside the `:db_folder`, and recurisvely copy top-level folders under `:db_folder` into the newly created `certbot` folder.
 
 ## 0.2.0
 
