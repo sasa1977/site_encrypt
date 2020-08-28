@@ -150,9 +150,9 @@ defmodule SiteEncrypt do
           emails: ["contact@abc.org", "another_contact@abc.org"],
           db_folder: Application.app_dir(:phoenix_demo, Path.join(~w/priv site_encrypt/))
 
-          # set OS env var MODE to "staging" or "production" on staging/production hosts
+          # set OS env var CERT_MODE to "staging" or "production" on staging/production hosts
           directory_url:
-            case System.get_env("MODE", "local") do
+            case System.get_env("CERT_MODE", "local") do
               "local" -> {:internal, port: 4002}
               "staging" -> "https://acme-staging-v02.api.letsencrypt.org/directory"
               "production" -> "https://acme-v02.api.letsencrypt.org/directory"
