@@ -28,16 +28,8 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
 
   use Parent.GenServer, restart: :temporary
 
-  def start_link({config, challenge_data}) do
-    # We'll register each challenge with the registry, using ACME server site and
-    # challenge data as the unique key. This ensures that no duplicate challenges
-    # are running at the same time.
-    Parent.GenServer.start_link(
-      __MODULE__,
-      {config, challenge_data},
-      name: via(config, challenge_data)
-    )
-  end
+  def start_link({config, challenge_data}),
+    do: Parent.GenServer.start_link(__MODULE__, {config, challenge_data})
 
   @impl GenServer
   def init({config, challenge_data}) do
@@ -56,11 +48,10 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
   end
 
   @impl Parent.GenServer
-  def handle_child_terminated(info, state) do
-    if info.id == :challenge and info.reason != :normal,
-      do: retry_challenge(state),
-      else: {:noreply, state}
-  end
+  def handle_stopped_children(%{challenge: %{exit_reason: reason}}, state) when reason != :normal,
+    do: retry_challenge(state)
+
+  def handle_stopped_children(_, state), do: {:noreply, state}
 
   defp retry_challenge(state) do
     if(state.attempts == @max_retries) do
@@ -75,7 +66,8 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
     Parent.start_child(%{
       id: :challenge,
       start: {Task, :start_link, [fn -> challenge(state) end]},
-      restart: :temporary
+      restart: :temporary,
+      ephemeral?: true
     })
   end
 
@@ -125,9 +117,12 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
     SiteEncrypt.HttpClient.request(:get, url, verify_server_cert: false)
   end
 
-  defp via(config, challenge_data),
-    do:
-      SiteEncrypt.Acme.Server.Registry.via_tuple(
-        {SiteEncrypt.Acme.Server.Challenge, config.site, challenge_data}
-      )
+  def child_spec({config, challenge_data} = arg) do
+    # We'll register each challenge with the registry, using ACME server site and
+    # challenge data as the unique key. This ensures that no duplicate challenges
+    # are running at the same time.
+    arg
+    |> super()
+    |> Parent.child_spec(id: {config.site, challenge_data}, ephemeral?: true)
+  end
 end

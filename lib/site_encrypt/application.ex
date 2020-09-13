@@ -4,10 +4,7 @@ defmodule SiteEncrypt.Application do
 
   def start(_type, _args) do
     Supervisor.start_link(
-      [
-        SiteEncrypt.Registry,
-        SiteEncrypt.Acme.Server.Registry
-      ],
+      [SiteEncrypt.Registry],
       strategy: :one_for_one,
       name: SiteEncrypt.Supervisor
     )

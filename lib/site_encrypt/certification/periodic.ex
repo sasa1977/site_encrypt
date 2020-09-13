@@ -16,15 +16,16 @@ defmodule SiteEncrypt.Certification.Periodic do
     }
   end
 
-  def child_spec(config) do
-    Periodic.child_spec(
-      id: __MODULE__.Scheduler,
+  def start_link(id) do
+    config = SiteEncrypt.Registry.config(id)
+
+    Periodic.start_link(
+      id: __MODULE__,
       run: fn -> SiteEncrypt.force_certify(config.id) end,
       every: :timer.seconds(1),
       when: fn -> time_to_renew?(config, utc_now(config)) end,
       on_overlap: :ignore,
-      mode: config.mode,
-      name: SiteEncrypt.Registry.name(config.id, __MODULE__)
+      mode: config.mode
     )
   end
 
@@ -69,12 +70,22 @@ defmodule SiteEncrypt.Certification.Periodic do
   def tick(id, datetime) do
     :persistent_term.put({__MODULE__, id}, datetime)
 
-    case Periodic.Test.sync_tick(SiteEncrypt.Registry.name(id, __MODULE__), :infinity) do
+    {:ok, scheduler_pid} = Parent.Client.child_pid(SiteEncrypt.Registry.root(id), __MODULE__)
+
+    case Periodic.Test.sync_tick(scheduler_pid, :infinity) do
       {:ok, :normal} -> :ok
       {:ok, abnormal} -> {:error, abnormal}
       error -> error
     end
   after
     :persistent_term.erase({{__MODULE__, id}, datetime})
+  end
+
+  def child_spec(id) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [id]},
+      type: :supervisor
+    }
   end
 end

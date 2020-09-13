@@ -1,7 +1,6 @@
 defmodule SiteEncrypt.Certification.Job do
   @moduledoc false
 
-  use Parent.GenServer
   require Logger
 
   @callback pems(SiteEncrypt.config()) :: {:ok, SiteEncrypt.pems()} | :error
@@ -23,32 +22,6 @@ defmodule SiteEncrypt.Certification.Job do
     end
   end
 
-  def start_link(config) do
-    Parent.GenServer.start_link(
-      __MODULE__,
-      config,
-      name: SiteEncrypt.Registry.name(config.id, __MODULE__)
-    )
-  end
-
-  @impl GenServer
-  def init(config) do
-    Parent.start_child(%{
-      id: :job,
-      start: {Task, :start_link, [fn -> certify_and_apply(config) end]},
-      timeout: :timer.minutes(5),
-      restart: :temporary
-    })
-
-    {:ok, config}
-  end
-
-  @impl Parent.GenServer
-  def handle_child_terminated(%{id: :job} = info, state) do
-    shutdown_reason = if info.reason == :normal, do: :normal, else: :job_error
-    {:stop, shutdown_reason, state}
-  end
-
   defp certify_and_apply(config) do
     with {:ok, pems} <- certify(config) do
       valid_until = SiteEncrypt.Certification.Periodic.cert_valid_until(config)
@@ -61,5 +34,16 @@ defmodule SiteEncrypt.Certification.Job do
 
       SiteEncrypt.set_certificate(config.id, pems)
     end
+  end
+
+  def child_spec(config) do
+    %{
+      id: __MODULE__,
+      start: {Task, :start_link, [fn -> certify_and_apply(config) end]},
+      timeout: :timer.minutes(5),
+      restart: :temporary,
+      ephemeral?: true,
+      binds_to: [:endpoint]
+    }
   end
 end
