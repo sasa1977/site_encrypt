@@ -56,10 +56,11 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
   end
 
   @impl Parent.GenServer
-  def handle_child_terminated(:challenge, _meta, _pid, :normal, state), do: {:noreply, state}
-
-  def handle_child_terminated(:challenge, _meta, _pid, _abnormal_reason, state),
-    do: retry_challenge(state)
+  def handle_child_terminated(info, state) do
+    if info.id == :challenge and info.reason != :normal,
+      do: retry_challenge(state),
+      else: {:noreply, state}
+  end
 
   defp retry_challenge(state) do
     if(state.attempts == @max_retries) do
@@ -71,9 +72,10 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
   end
 
   defp start_challenge(state) do
-    Parent.GenServer.start_child(%{
+    Parent.start_child(%{
       id: :challenge,
-      start: {Task, :start_link, [fn -> challenge(state) end]}
+      start: {Task, :start_link, [fn -> challenge(state) end]},
+      restart: :temporary
     })
   end
 

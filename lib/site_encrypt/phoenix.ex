@@ -88,7 +88,7 @@ defmodule SiteEncrypt.Phoenix do
 
   @impl GenServer
   def handle_call(:stop_site, _from, state) do
-    Parent.GenServer.shutdown_all()
+    Parent.shutdown_all()
     {:reply, :ok, state}
   end
 
@@ -100,7 +100,7 @@ defmodule SiteEncrypt.Phoenix do
   @impl Parent.GenServer
   # Naive one-for-all with max_restarts of 0. If any of site services stop, we'll stop all remaining
   # siblings, effectively escalating restart to the parent supervisor.
-  def handle_child_terminated(_id, _meta, _pid, _reason, state), do: {:stop, :shutdown, state}
+  def handle_child_terminated(_info, state), do: {:stop, :shutdown, state}
 
   defp start_site(config, endpoint) do
     # Using parent as a supervisor, because we have a more dynamic startup flow.
@@ -126,7 +126,7 @@ defmodule SiteEncrypt.Phoenix do
   end
 
   defp start_child!(child_spec),
-    do: {:ok, _} = Parent.GenServer.start_child(Supervisor.child_spec(child_spec, []))
+    do: {:ok, _} = Parent.start_child(Supervisor.child_spec(child_spec, restart: :temporary))
 
   defp server?(endpoint) do
     with nil <- endpoint.config(:server),

@@ -33,18 +33,19 @@ defmodule SiteEncrypt.Certification.Job do
 
   @impl GenServer
   def init(config) do
-    Parent.GenServer.start_child(%{
+    Parent.start_child(%{
       id: :job,
       start: {Task, :start_link, [fn -> certify_and_apply(config) end]},
-      timeout: :timer.minutes(5)
+      timeout: :timer.minutes(5),
+      restart: :temporary
     })
 
     {:ok, config}
   end
 
   @impl Parent.GenServer
-  def handle_child_terminated(:job, _meta, _pid, reason, state) do
-    shutdown_reason = if reason == :normal, do: :normal, else: :job_error
+  def handle_child_terminated(%{id: :job} = info, state) do
+    shutdown_reason = if info.reason == :normal, do: :normal, else: :job_error
     {:stop, shutdown_reason, state}
   end
 
