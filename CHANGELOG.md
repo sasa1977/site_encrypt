@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Fixes invalid dependency requirement.
+
 ## 0.3.0
 
 ### Additions and non-breaking changes
