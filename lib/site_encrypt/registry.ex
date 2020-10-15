@@ -4,9 +4,16 @@ defmodule SiteEncrypt.Registry do
   def child_spec(_),
     do: Supervisor.child_spec({Registry, keys: :unique, name: __MODULE__}, id: __MODULE__)
 
+  def root(id), do: GenServer.whereis({:via, Registry, {__MODULE__, id}})
+
+  def store_config(id, config) do
+    {_, _} = Registry.update_value(__MODULE__, id, fn _ -> config end)
+    :ok
+  end
+
   @spec config(SiteEncrypt.id()) :: SiteEncrypt.config()
   def config(id) do
-    [{_pid, config}] = Registry.lookup(__MODULE__, {id, :root})
+    [{_pid, config}] = Registry.lookup(__MODULE__, id)
     config
   end
 
@@ -42,10 +49,4 @@ defmodule SiteEncrypt.Registry do
       timeout -> false
     end
   end
-
-  def register(id, role, value \\ nil), do: Registry.register(__MODULE__, {id, role}, value)
-
-  def name(id, role), do: {:via, Registry, {__MODULE__, {id, role}}}
-
-  def whereis(id, role), do: GenServer.whereis(name(id, role))
 end

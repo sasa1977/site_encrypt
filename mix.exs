@@ -1,7 +1,7 @@
 defmodule SiteEncrypt.MixProject do
   use Mix.Project
 
-  @version "0.3.0"
+  @version "0.4.0"
 
   def project do
     [
@@ -32,7 +32,7 @@ defmodule SiteEncrypt.MixProject do
       {:jose, "~> 1.10"},
       {:mint, "~> 1.1"},
       {:nimble_options, "~> 0.2"},
-      {:parent, "~> 0.9"},
+      {:parent, "~> 0.11"},
       {:phoenix, "~> 1.5", optional: true},
       {:plug_cowboy, "~> 2.2", optional: true},
       {:plug, "~> 1.7", optional: true},

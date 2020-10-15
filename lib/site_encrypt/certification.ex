@@ -4,26 +4,16 @@ defmodule SiteEncrypt.Certification do
   alias SiteEncrypt.Registry
   alias SiteEncrypt.Certification.Periodic
 
-  def start_link(config) do
-    with {:ok, pid} <-
-           Supervisor.start_link(
-             [job_parent_spec(config), {Periodic, config}],
-             strategy: :one_for_one
-           ) do
-      if config.mode == :auto do
-        if Periodic.cert_due_for_renewal?(config) do
-          start_renew(config)
-        else
-          SiteEncrypt.log(config, [
-            "Certificate for #{hd(config.domains)} is valid until ",
-            "#{Periodic.cert_valid_until(config)}. ",
-            "Next renewal is scheduled for #{Periodic.renewal_date(config)}."
-          ])
-        end
-      end
-
-      {:ok, pid}
-    end
+  def child_specs(id) do
+    [
+      %{
+        id: __MODULE__.InitialRenewal,
+        start: {Task, :start_link, [fn -> start_initial_renewal(id) end]},
+        restart: :temporary,
+        binds_to: [:endpoint]
+      },
+      Parent.child_spec({Periodic, id}, binds_to: [:endpoint])
+    ]
   end
 
   @spec run_renew(SiteEncrypt.config()) :: :ok | :error
@@ -94,26 +84,24 @@ defmodule SiteEncrypt.Certification do
       )
   end
 
-  defp job_parent_spec(config) do
-    {
-      DynamicSupervisor,
-      strategy: :one_for_one, name: Registry.name(config.id, __MODULE__.JobParent)
-    }
+  defp start_initial_renewal(id) do
+    config = Registry.config(id)
+
+    if config.mode == :auto do
+      if Periodic.cert_due_for_renewal?(config) do
+        start_renew(config)
+      else
+        SiteEncrypt.log(config, [
+          "Certificate for #{hd(config.domains)} is valid until ",
+          "#{Periodic.cert_valid_until(config)}. ",
+          "Next renewal is scheduled for #{Periodic.renewal_date(config)}."
+        ])
+      end
+    end
   end
 
   defp start_renew(config) do
-    DynamicSupervisor.start_child(
-      Registry.name(config.id, __MODULE__.JobParent),
-      Supervisor.child_spec({SiteEncrypt.Certification.Job, config}, restart: :temporary)
-    )
-  end
-
-  @spec child_spec(SiteEncrypt.config()) :: Supervisor.child_spec()
-  def child_spec(config) do
-    %{
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, [config]},
-      type: :supervisor
-    }
+    root = Registry.root(config.id)
+    Parent.Client.start_child(root, {SiteEncrypt.Certification.Job, config})
   end
 end

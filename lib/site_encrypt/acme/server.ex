@@ -1,9 +1,11 @@
 defmodule SiteEncrypt.Acme.Server do
   @moduledoc false
+  use Parent.Supervisor
+  require Logger
   alias SiteEncrypt.Acme.Server.Account
 
-  @type start_opts :: [dns: dns, port: pos_integer()]
-  @type config :: %{site: String.t(), site_uri: URI.t(), dns: dns}
+  @type start_opts :: [id: SiteEncrypt.id(), dns: dns, port: pos_integer()]
+  @type config :: %{id: SiteEncrypt.id(), site: String.t(), site_uri: URI.t(), dns: dns}
   @type dns :: %{String.t() => String.t()}
   @type method :: :get | :head | :put | :post | :delete
   @type handle_response :: %{status: status, headers: headers, body: body}
@@ -12,20 +14,29 @@ defmodule SiteEncrypt.Acme.Server do
   @type body :: binary
   @type domains :: [String.t()]
 
-  @spec start_link(start_opts) :: Supervisor.on_start()
-  def start_link(opts) do
-    port = Keyword.fetch!(opts, :port)
-    site = "https://localhost:#{port}"
-    config = %{site: site, site_uri: URI.parse(site), dns: Keyword.fetch!(opts, :dns)}
+  @spec start_link(term, pos_integer, dns, log_level: Logger.level()) :: Supervisor.on_start()
+  def start_link(id, port, dns, opts \\ []) do
+    Logger.log(Keyword.get(opts, :log_level, :debug), "Running local ACME server at port #{port}")
 
-    Supervisor.start_link(
-      [
-        {SiteEncrypt.Acme.Server.Db, config},
-        {SiteEncrypt.Acme.Server.Challenges, config},
-        endpoint_spec(config, port)
-      ],
-      strategy: :one_for_one
-    )
+    site = "https://localhost:#{port}"
+
+    acme_server_config = %{
+      id: id,
+      site: site,
+      site_uri: URI.parse(site),
+      dns: dns
+    }
+
+    Parent.Supervisor.start_link([
+      {SiteEncrypt.Acme.Server.Db, acme_server_config},
+      endpoint_spec(acme_server_config, port)
+    ])
+  end
+
+  def whereis(id) do
+    root = SiteEncrypt.Registry.root(id)
+    {:ok, server} = Parent.Client.child_pid(root, __MODULE__)
+    server
   end
 
   @spec resource_path(config, String.t()) :: {:ok, String.t()} | :error
@@ -119,12 +130,17 @@ defmodule SiteEncrypt.Acme.Server do
     order = SiteEncrypt.Acme.Server.Account.get_order!(config, account_id, order_id)
     authorizations_url = "#{config.site}/authorizations/#{order_path}"
 
-    SiteEncrypt.Acme.Server.Challenges.start_challenge(config, %{
+    challenge_data = %{
       dns: config.dns,
       account_id: account_id,
       order: order,
       key_thumbprint: JOSE.JWK.thumbprint(client_key(request))
-    })
+    }
+
+    Parent.Client.start_child(
+      whereis(config.id),
+      {SiteEncrypt.Acme.Server.Challenge, {config, challenge_data}}
+    )
 
     respond_json(
       200,
@@ -227,15 +243,6 @@ defmodule SiteEncrypt.Acme.Server do
       end
 
     {account, SiteEncrypt.Acme.Server.Account.new_order(config, account, domains)}
-  end
-
-  @doc false
-  def child_spec(opts) do
-    %{
-      id: __MODULE__,
-      type: :supervisor,
-      start: {__MODULE__, :start_link, [opts]}
-    }
   end
 
   defp endpoint_spec(config, port) do

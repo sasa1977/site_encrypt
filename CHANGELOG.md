@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0
+
+This version upgrades to the Parent 0.11 and changes the internals. Strictly speaking this version doesn't change anything, so it could have been a patch update. However, moving to Parent 0.11 might introduce breaking changes in the client code, so the major version is bumped.
+
 ## 0.3.0
 
 ### Additions and non-breaking changes

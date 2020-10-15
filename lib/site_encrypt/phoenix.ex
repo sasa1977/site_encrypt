@@ -11,7 +11,7 @@ defmodule SiteEncrypt.Phoenix do
 
   """
 
-  use Parent.GenServer
+  use Parent.Supervisor
   alias SiteEncrypt.{Acme, Registry}
 
   @doc """
@@ -68,76 +68,64 @@ defmodule SiteEncrypt.Phoenix do
   end
 
   @doc false
-  def start_link(endpoint), do: Parent.GenServer.start_link(__MODULE__, endpoint)
+  def start_link(endpoint) do
+    Parent.Supervisor.start_link(
+      children(endpoint),
+      name: {:via, Elixir.Registry, {Registry, endpoint}}
+    )
+  end
 
   @doc false
-  def restart_site(id, fun) do
-    GenServer.call(Registry.name(id, :root), :stop_site)
+  def restart_site(endpoint, fun) do
+    root = Registry.root(endpoint)
+    Parent.Client.shutdown_all(root)
     fun.()
-    GenServer.call(Registry.name(id, :root), :start_site)
-    :ok
+    Enum.each(children(endpoint), fn spec -> {:ok, _} = Parent.Client.start_child(root, spec) end)
   end
 
-  @impl GenServer
-  def init(endpoint) do
+  defp children(endpoint) do
+    [
+      Parent.child_spec(endpoint, id: :endpoint, start: fn -> start_endpoint(endpoint) end),
+      Parent.child_spec(Acme.Server,
+        start: fn -> start_acme_server(endpoint) end,
+        binds_to: [:endpoint]
+      )
+    ] ++ SiteEncrypt.Certification.child_specs(endpoint)
+  end
+
+  defp start_endpoint(endpoint) do
     config = endpoint.certification()
-    Registry.register(config.id, :root, config)
-    start_site(config, endpoint)
-    {:ok, %{config: config, endpoint: endpoint}}
-  end
-
-  @impl GenServer
-  def handle_call(:stop_site, _from, state) do
-    Parent.GenServer.shutdown_all()
-    {:reply, :ok, state}
-  end
-
-  def handle_call(:start_site, _from, state) do
-    start_site(state.config, state.endpoint)
-    {:reply, :ok, state}
-  end
-
-  @impl Parent.GenServer
-  # Naive one-for-all with max_restarts of 0. If any of site services stop, we'll stop all remaining
-  # siblings, effectively escalating restart to the parent supervisor.
-  def handle_child_terminated(_id, _meta, _pid, _reason, state), do: {:stop, :shutdown, state}
-
-  defp start_site(config, endpoint) do
-    # Using parent as a supervisor, because we have a more dynamic startup flow.
-    # We have to start the endpoint first, and then fetch its config to figure out if its serving
-    # traffic. Based on that, and other options, we're determining whether additional processes,
-    # such as local ACME server and certifier need to be started.
-    #
-    # Additionally, this approach allows a simple implementation of stop and restart site.
-
+    Registry.store_config(endpoint, config)
     SiteEncrypt.initialize_certs(config)
+    endpoint.start_link([])
+  end
 
-    start_child!(endpoint)
+  defp start_acme_server(endpoint) do
+    config = Registry.config(endpoint)
 
-    if server?(endpoint) do
-      with %{directory_url: {:internal, acme_server_config}} <- config do
-        port = Keyword.fetch!(acme_server_config, :port)
-        SiteEncrypt.log(config, "Running local ACME server at port #{port}")
-        start_child!({Acme.Server, port: port, dns: dns(config, endpoint)})
-      end
-
-      start_child!({SiteEncrypt.Certification, config})
+    with endpoint_port when not is_nil(endpoint_port) <- endpoint_port(config),
+         port when not is_nil(port) <- acme_server_port(config) do
+      dns = dns(config, endpoint_port)
+      Acme.Server.start_link(config.id, port, dns, log_level: config.log_level)
+    else
+      _ -> :ignore
     end
   end
 
-  defp start_child!(child_spec),
-    do: {:ok, _} = Parent.GenServer.start_child(Supervisor.child_spec(child_spec, []))
+  defp endpoint_port(%{id: endpoint}) do
+    if server?(endpoint), do: endpoint.config(:http) |> Keyword.fetch!(:port)
+  end
 
   defp server?(endpoint) do
     with nil <- endpoint.config(:server),
          do: Application.get_env(:phoenix, :serve_endpoints, false)
   end
 
-  defp dns(config, endpoint) do
-    Enum.into(
-      config.domains,
-      %{},
-      &{&1, fn -> "localhost:#{endpoint.config(:http) |> Keyword.fetch!(:port)}" end}
-    )
-  end
+  defp dns(config, endpoint_port),
+    do: Enum.into(config.domains, %{}, &{&1, fn -> "localhost:#{endpoint_port}" end})
+
+  defp acme_server_port(%{directory_url: {:internal, acme_server_opts}}),
+    do: Keyword.get(acme_server_opts, :port)
+
+  defp acme_server_port(_), do: nil
 end
