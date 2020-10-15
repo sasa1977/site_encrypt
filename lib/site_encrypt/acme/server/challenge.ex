@@ -71,7 +71,7 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
   end
 
   defp start_challenge(state) do
-    Parent.GenServer.start_child(%{
+    Parent.start_child(%{
       id: :challenge,
       start: {Task, :start_link, [fn -> challenge(state) end]}
     })

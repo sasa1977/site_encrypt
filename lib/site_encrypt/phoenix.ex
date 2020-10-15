@@ -88,7 +88,7 @@ defmodule SiteEncrypt.Phoenix do
 
   @impl GenServer
   def handle_call(:stop_site, _from, state) do
-    Parent.GenServer.shutdown_all()
+    Parent.shutdown_all()
     {:reply, :ok, state}
   end
 
@@ -126,7 +126,7 @@ defmodule SiteEncrypt.Phoenix do
   end
 
   defp start_child!(child_spec),
-    do: {:ok, _} = Parent.GenServer.start_child(Supervisor.child_spec(child_spec, []))
+    do: {:ok, _} = Parent.start_child(Supervisor.child_spec(child_spec, []))
 
   defp server?(endpoint) do
     with nil <- endpoint.config(:server),
