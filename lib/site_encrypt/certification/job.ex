@@ -33,7 +33,7 @@ defmodule SiteEncrypt.Certification.Job do
 
   @impl GenServer
   def init(config) do
-    Parent.GenServer.start_child(%{
+    Parent.start_child(%{
       id: :job,
       start: {Task, :start_link, [fn -> certify_and_apply(config) end]},
       timeout: :timer.minutes(5)
