@@ -69,7 +69,7 @@ defmodule SiteEncrypt.Certification do
       :ok =
         :erl_tar.extract(
           to_charlist(config.backup),
-          [:compressed, cwd: to_char_list(config.db_folder)]
+          [:compressed, cwd: to_charlist(config.db_folder)]
         )
 
       with {:ok, pems} <- SiteEncrypt.client(config).pems(config) do
