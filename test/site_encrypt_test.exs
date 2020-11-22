@@ -37,7 +37,7 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
       assert File.exists?(config.backup)
 
       # remove db folder and restart the site
-      SiteEncrypt.Phoenix.restart_site(TestEndpoint, fn ->
+      SiteEncrypt.Adapter.restart_site(TestEndpoint, fn ->
         File.rm_rf!(config.db_folder)
         :ssl.clear_pem_cache()
       end)

@@ -34,7 +34,7 @@ defmodule SiteEncrypt.Phoenix.Test do
   """
   @spec clean_restart(module) :: :ok
   def clean_restart(endpoint) do
-    SiteEncrypt.Phoenix.restart_site(endpoint, fn ->
+    SiteEncrypt.Adapter.restart_site(endpoint, fn ->
       ~w/db_folder backup/a
       |> Stream.map(&Map.fetch!(endpoint.certification(), &1))
       |> Stream.reject(&is_nil/1)
