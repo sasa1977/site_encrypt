@@ -31,7 +31,7 @@ defmodule SiteEncrypt.MixProject do
       {:jason, "~> 1.0"},
       {:jose, "~> 1.10"},
       {:mint, "~> 1.1"},
-      {:nimble_options, "~> 0.2"},
+      {:nimble_options, "~> 0.3"},
       {:parent, "~> 0.11"},
       {:phoenix, "~> 1.5", optional: true},
       {:plug_cowboy, "~> 2.2", optional: true},
