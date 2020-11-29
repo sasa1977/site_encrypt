@@ -49,7 +49,7 @@ defmodule SiteEncrypt do
 
   @certification_schema [
     client: [
-      type: {:one_of, [:native, :certbot]},
+      type: {:in, [:native, :certbot]},
       required: true,
       doc: """
           Can be either `:native` or `:certbot`.
@@ -114,7 +114,7 @@ defmodule SiteEncrypt do
       """
     ],
     log_level: [
-      type: {:one_of, [:debug, :info, :warn, :error]},
+      type: {:in, [:debug, :info, :warn, :error]},
       default: :info,
       doc: "Logger level for info messages."
     ],
@@ -124,7 +124,7 @@ defmodule SiteEncrypt do
       doc: "The size used for generating private keys."
     ],
     mode: [
-      type: {:one_of, [:auto, :manual]},
+      type: {:in, [:auto, :manual]},
       default: :auto,
       doc: """
       When set to `:auto`, the certificate will be automatically created or renewed when needed.
