@@ -177,13 +177,14 @@ defmodule SiteEncrypt do
         unquote(opts)
         |> NimbleOptions.validate!(unquote(Macro.escape(@certification_schema)))
         |> Map.new()
-        |> Map.update!(:db_folder, &Path.join(&1, unquote(db_folder_suffix)))
+        |> Map.update!(:db_folder, &(&1 |> Path.join(unquote(db_folder_suffix)) |> Path.expand()))
 
       config =
         defaults
         |> Map.merge(user_config)
         |> Map.merge(%{callback: __MODULE__, periodic_offset: Certification.Periodic.offset()})
         |> Map.merge(unquote(Macro.escape(overrides)))
+        |> Map.update!(:backup, &(&1 && Path.expand(&1)))
 
       if SiteEncrypt.local_ca?(config), do: %{config | key_size: 1024}, else: config
     end
