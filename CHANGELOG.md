@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2
+
+- correclty handle relative paths
+
 ## 0.4.1
 
 - use dialyxir only on dev
