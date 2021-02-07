@@ -26,7 +26,7 @@ defmodule PhoenixDemo.Endpoint do
       client: :native,
       domains: ["mysite.com", "www.mysite.com"],
       emails: ["admin@email.address"],
-      db_folder: Application.app_dir(:phoenix_demo, Path.join(~w/priv site_encrypt/)),
+      db_folder: System.get_env("SITE_ENCRYPT_DB", Path.join("tmp", "site_encrypt_db")),
       directory_url:
         case System.get_env("CERT_MODE", "local") do
           "local" -> {:internal, port: 4002}

@@ -148,7 +148,15 @@ defmodule SiteEncrypt do
           client: :native,
           domains: ["mysite.com", "www.mysite.com"],
           emails: ["contact@abc.org", "another_contact@abc.org"],
-          db_folder: Application.app_dir(:phoenix_demo, Path.join(~w/priv site_encrypt/))
+
+          # By default the certs will be stored in tmp/site_encrypt_db, which is convenient for
+          # local development. Make sure that tmp folder is gitignored.
+          #
+          # Set OS env var SITE_ENCRYPT_DB on staging/production hosts to some absolute path
+          # outside of the deployment folder. Otherwise, the deploy may delete the db_folder,
+          # which will effectively remove the generated key and certificate files.
+          db_folder:
+            System.get_env("SITE_ENCRYPT_DB", Path.join("tmp", "site_encrypt_db")),
 
           # set OS env var CERT_MODE to "staging" or "production" on staging/production hosts
           directory_url:
@@ -177,13 +185,14 @@ defmodule SiteEncrypt do
         unquote(opts)
         |> NimbleOptions.validate!(unquote(Macro.escape(@certification_schema)))
         |> Map.new()
-        |> Map.update!(:db_folder, &Path.join(&1, unquote(db_folder_suffix)))
+        |> Map.update!(:db_folder, &(&1 |> Path.join(unquote(db_folder_suffix)) |> Path.expand()))
 
       config =
         defaults
         |> Map.merge(user_config)
         |> Map.merge(%{callback: __MODULE__, periodic_offset: Certification.Periodic.offset()})
         |> Map.merge(unquote(Macro.escape(overrides)))
+        |> Map.update!(:backup, &(&1 && Path.expand(&1)))
 
       if SiteEncrypt.local_ca?(config), do: %{config | key_size: 1024}, else: config
     end

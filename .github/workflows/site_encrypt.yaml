@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: actions/setup-elixir@v1
+      - uses: erlef/setup-elixir@v1
         with:
           otp-version: 22.2
           elixir-version: 1.10.3
@@ -37,8 +37,6 @@ jobs:
 
       - run: |
           sudo apt-get install software-properties-common
-          sudo add-apt-repository universe -y
-          sudo add-apt-repository ppa:certbot/certbot -y
           sudo apt-get update
           sudo apt-get install -y certbot
 
