@@ -2,7 +2,7 @@
 
 ## 0.4.2
 
-- correclty handle relative paths
+- correctly handle relative paths
 
 ## 0.4.1
 
