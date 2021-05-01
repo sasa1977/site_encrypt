@@ -113,7 +113,15 @@ defmodule SiteEncrypt.Phoenix do
   end
 
   defp endpoint_port(%{id: endpoint}) do
-    if server?(endpoint), do: endpoint.config(:http) |> Keyword.fetch!(:port)
+    if server?(endpoint) && http?(endpoint), do: endpoint.config(:http) |> Keyword.fetch!(:port)
+  end
+
+  defp http?(endpoint) do
+    case endpoint.config(:http) do
+      false -> false
+      [] -> false
+      _ -> true
+    end
   end
 
   defp server?(endpoint) do
