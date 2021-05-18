@@ -50,6 +50,13 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
       refute get_cert(TestEndpoint) == first_cert
     end
 
+    test "detect change in domains" do
+      config = SiteEncrypt.Registry.config(TestEndpoint)
+      updated_config = config |> update_in([:domains], fn domains -> domains ++ ["bar.localhost"] end)
+      
+      assert true == SiteEncrypt.certificate_subjects_changed?(updated_config)
+    end
+
     defmodule TestEndpoint do
       @moduledoc false
 

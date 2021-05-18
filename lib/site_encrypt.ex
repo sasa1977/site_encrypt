@@ -372,7 +372,7 @@ defmodule SiteEncrypt do
       certificate <- X509.Certificate.from_pem!(pems.cert),
       {:Extension, _, _, dns_names} <- X509.Certificate.extension(certificate, :subject_alt_name),
       certificate_subjects <- dns_names |> Enum.map(fn {_, dns_name} -> to_string(dns_name) end) |> Enum.sort(),
-      domains <- Map.get(SiteEncrypt.Registry.config(AnitaDomainRedirectWeb.Endpoint), :domains) |> Enum.sort()
+      domains <- config.domains |> Enum.sort()
     do
       domains != certificate_subjects
     else

@@ -29,7 +29,7 @@ defmodule SiteEncrypt.Certification.Certbot do
     ensure_folders(config)
 
     result = case pems(config) do
-      {:ok, pems} ->
+      {:ok, _} ->
         if SiteEncrypt.certificate_subjects_changed?(config), do: expand(config, opts), else: renew(config, opts)
       _ ->
         certonly(config, opts)
