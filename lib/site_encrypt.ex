@@ -360,4 +360,23 @@ defmodule SiteEncrypt do
       do: {:ok, string},
       else: {:error, ":directory_url must be a string or an `:internal` tuple"}
   end
+
+  @doc """
+  Check whether the current certificate contains all of the configured domains in the section subject_alt_name
+
+  In case there is a mismatch you might want to run `SiteEncrypt.force_certify/1` to expand the certificate with the
+  current set of domains.
+  """
+  def certificate_subjects_changed?(config) do
+    with {:ok, pems} <- SiteEncrypt.client(config).pems(config),
+      certificate <- X509.Certificate.from_pem!(pems.cert),
+      {:Extension, _, _, dns_names} <- X509.Certificate.extension(certificate, :subject_alt_name),
+      certificate_subjects <- dns_names |> Enum.map(fn {_, dns_name} -> to_string(dns_name) end) |> Enum.sort(),
+      domains <- Map.get(SiteEncrypt.Registry.config(AnitaDomainRedirectWeb.Endpoint), :domains) |> Enum.sort()
+    do
+      domains != certificate_subjects
+    else
+      _ -> false
+    end
+  end
 end
