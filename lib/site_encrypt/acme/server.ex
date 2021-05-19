@@ -34,8 +34,7 @@ defmodule SiteEncrypt.Acme.Server do
   end
 
   def whereis(id) do
-    root = SiteEncrypt.Registry.root(id)
-    {:ok, server} = Parent.Client.child_pid(root, __MODULE__)
+    {:ok, server} = Parent.Client.child_pid(SiteEncrypt.Registry.root(id), __MODULE__)
     server
   end
 
