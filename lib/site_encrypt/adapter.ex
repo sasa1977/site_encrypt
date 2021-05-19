@@ -43,6 +43,13 @@ defmodule SiteEncrypt.Adapter do
     GenServer.call(Registry.root(id), :start_all_children)
   end
 
+  @doc """
+  Refresh the configuration for a given endpoint
+  """
+  def refresh_config(id) do
+    GenServer.call(Registry.root(id), :refresh_config)
+  end
+
   @impl GenServer
   def init({callback, id, arg}) do
     state = %{callback: callback, id: id, arg: arg}
@@ -53,6 +60,13 @@ defmodule SiteEncrypt.Adapter do
   @impl GenServer
   def handle_call(:start_all_children, _from, state) do
     start_all_children!(state)
+    {:reply, :ok, state}
+  end
+
+  @impl GenServer
+  def handle_call(:refresh_config, _from, state) do
+    adapter_config = state.callback.config(state.id, state.arg)
+    Registry.store_config(state.id, adapter_config.certification)
     {:reply, :ok, state}
   end
 
