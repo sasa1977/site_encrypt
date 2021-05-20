@@ -373,7 +373,7 @@ defmodule SiteEncrypt do
   end
 
   defp domains_certified(config) do
-    with {:ok, pems} <- SiteEncrypt.client(config).pems(config),
+    with {:ok, pems} <- client(config).pems(config),
          certificate <- X509.Certificate.from_pem!(pems.cert),
          {:Extension, _, _, dns_names} <-
            X509.Certificate.extension(certificate, :subject_alt_name),
