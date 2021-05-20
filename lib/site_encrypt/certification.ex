@@ -88,7 +88,7 @@ defmodule SiteEncrypt.Certification do
     config = Registry.config(id)
 
     if config.mode == :auto do
-      if Periodic.cert_due_for_renewal?(config) ||
+      if Periodic.cert_due_for_renewal?(config) or
            SiteEncrypt.certificate_subjects_changed?(config) do
         start_renew(config)
       else
