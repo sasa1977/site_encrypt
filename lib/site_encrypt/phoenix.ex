@@ -83,14 +83,18 @@ defmodule SiteEncrypt.Phoenix do
 
   @impl Adapter
   def http_port(_id, endpoint) do
-    http_config = endpoint.config(:http)
+    if server?(endpoint) do
+      http_config = endpoint.config(:http)
 
-    with true <- Keyword.keyword?(http_config),
-         port when is_integer(port) <- Keyword.get(http_config, :port) do
-      {:ok, port}
+      with true <- Keyword.keyword?(http_config),
+           port when is_integer(port) <- Keyword.get(http_config, :port) do
+        {:ok, port}
+      else
+        _ ->
+          raise_http_required(http_config)
+      end
     else
-      _ ->
-        raise_http_required(http_config)
+      :error
     end
   end
 
