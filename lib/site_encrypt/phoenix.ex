@@ -96,9 +96,9 @@ defmodule SiteEncrypt.Phoenix do
 
   defp raise_http_required(http_config) do
     raise "Unable to retrieve HTTP port from the HTTP configuration. SiteEncrypt relies on the Lets Encrypt " <>
-          "HTTP-01 challenge type which requires an HTTP version of the endpoint to be running and " <>
-          "the configuration received did not include an http port.\n" <>
-          "Received: #{inspect(http_config)}"
+            "HTTP-01 challenge type which requires an HTTP version of the endpoint to be running and " <>
+            "the configuration received did not include an http port.\n" <>
+            "Received: #{inspect(http_config)}"
   end
 
   defp server?(endpoint) do
