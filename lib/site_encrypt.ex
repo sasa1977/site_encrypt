@@ -363,25 +363,21 @@ defmodule SiteEncrypt do
 
   @doc false
   def certificate_subjects_changed?(config) do
-    case domains_certified(config) do
-      {:ok, certificate_subjects} ->
-        config.domains |> Enum.sort() != certificate_subjects |> Enum.sort()
-
-      _ ->
-        false
-    end
+    with {:ok, pems} <- client(config).pems(config),
+         {:ok, certified_domains} <- certified_domains(pems.cert),
+         do: MapSet.new(config.domains) != MapSet.new(certified_domains),
+         else: (:error -> false)
   end
 
-  defp domains_certified(config) do
-    with {:ok, pems} <- client(config).pems(config),
-         certificate <- X509.Certificate.from_pem!(pems.cert),
-         {:Extension, _, _, dns_names} <-
-           X509.Certificate.extension(certificate, :subject_alt_name),
-         certificate_subjects <-
-           dns_names |> Enum.map(fn {_, dns_name} -> to_string(dns_name) end) do
-      {:ok, certificate_subjects}
-    else
-      _ -> :error
+  defp certified_domains(cert) do
+    certificate = X509.Certificate.from_pem!(cert)
+
+    case X509.Certificate.extension(certificate, :subject_alt_name) do
+      {:Extension, _, _, dns_names} ->
+        {:ok, Enum.map(dns_names, fn {_, dns_name} -> to_string(dns_name) end)}
+
+      _ ->
+        :error
     end
   end
 
