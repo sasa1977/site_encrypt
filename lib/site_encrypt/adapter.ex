@@ -91,7 +91,7 @@ defmodule SiteEncrypt.Adapter do
 
     with {:ok, site_port} <- state.callback.http_port(state.id, state.arg),
          {:ok, acme_server_port} when not is_nil(acme_server_port) <- acme_server_port(config) do
-      dns = dns(config, site_port)
+      dns = dns(config.id, site_port)
       Acme.Server.start_link(config.id, acme_server_port, dns, log_level: config.log_level)
     else
       _ -> :ignore
@@ -103,6 +103,11 @@ defmodule SiteEncrypt.Adapter do
 
   defp acme_server_port(_), do: :error
 
-  defp dns(config, endpoint_port),
-    do: Enum.into(config.domains, %{}, &{&1, fn -> "localhost:#{endpoint_port}" end})
+  defp dns(id, endpoint_port) do
+    fn ->
+      # refetching the new config before resolving domain names allows us to correctly handle
+      # config changes made after the endpoint has been started
+      Enum.into(Registry.config(id).domains, %{}, &{&1, "localhost:#{endpoint_port}"})
+    end
+  end
 end

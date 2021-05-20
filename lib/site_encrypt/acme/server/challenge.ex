@@ -89,18 +89,11 @@ defmodule SiteEncrypt.Acme.Server.Challenge do
 
   defp challenge_domains(domains, token, dns, key_thumbprint) do
     domains
-    |> Task.async_stream(&challenge_domain(http_server(&1, dns), token, key_thumbprint))
+    |> Task.async_stream(&challenge_domain(Map.get(dns, &1, &1), token, key_thumbprint))
     |> Enum.map(fn
       {:ok, result} -> result
       _ -> :error
     end)
-  end
-
-  defp http_server(domain, dns) do
-    case Map.fetch(dns, domain) do
-      {:ok, resolver} -> resolver.()
-      :error -> domain
-    end
   end
 
   defp challenge_domain(url, token, key_thumbprint) do

@@ -4,9 +4,9 @@ defmodule SiteEncrypt.Acme.Server do
   require Logger
   alias SiteEncrypt.Acme.Server.Account
 
-  @type start_opts :: [id: SiteEncrypt.id(), dns: dns, port: pos_integer()]
-  @type config :: %{id: SiteEncrypt.id(), site: String.t(), site_uri: URI.t(), dns: dns}
-  @type dns :: %{String.t() => String.t()}
+  @type start_opts :: [id: SiteEncrypt.id(), dns: dns_fun, port: pos_integer()]
+  @type config :: %{id: SiteEncrypt.id(), site: String.t(), site_uri: URI.t(), dns: dns_fun}
+  @type dns_fun :: (() -> %{String.t() => String.t()})
   @type method :: :get | :head | :put | :post | :delete
   @type handle_response :: %{status: status, headers: headers, body: body}
   @type status :: pos_integer
@@ -14,7 +14,7 @@ defmodule SiteEncrypt.Acme.Server do
   @type body :: binary
   @type domains :: [String.t()]
 
-  @spec start_link(term, pos_integer, dns, log_level: Logger.level()) :: Supervisor.on_start()
+  @spec start_link(term, pos_integer, dns_fun, log_level: Logger.level()) :: Supervisor.on_start()
   def start_link(id, port, dns, opts \\ []) do
     Logger.log(Keyword.get(opts, :log_level, :debug), "Running local ACME server at port #{port}")
 
@@ -130,7 +130,7 @@ defmodule SiteEncrypt.Acme.Server do
     authorizations_url = "#{config.site}/authorizations/#{order_path}"
 
     challenge_data = %{
-      dns: config.dns,
+      dns: config.dns.(),
       account_id: account_id,
       order: order,
       key_thumbprint: JOSE.JWK.thumbprint(client_key(request))
