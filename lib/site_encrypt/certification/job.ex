@@ -43,7 +43,7 @@ defmodule SiteEncrypt.Certification.Job do
       timeout: :timer.minutes(5),
       restart: :temporary,
       ephemeral?: true,
-      binds_to: [:endpoint]
+      binds_to: [:site]
     }
   end
 end

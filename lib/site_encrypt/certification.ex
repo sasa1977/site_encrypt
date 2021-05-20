@@ -10,9 +10,9 @@ defmodule SiteEncrypt.Certification do
         id: __MODULE__.InitialRenewal,
         start: {Task, :start_link, [fn -> start_initial_renewal(id) end]},
         restart: :temporary,
-        binds_to: [:endpoint]
+        binds_to: [:site]
       },
-      Parent.child_spec({Periodic, id}, binds_to: [:endpoint])
+      Parent.child_spec({Periodic, id}, binds_to: [:site])
     ]
   end
 
@@ -88,7 +88,7 @@ defmodule SiteEncrypt.Certification do
     config = Registry.config(id)
 
     if config.mode == :auto do
-      if Periodic.cert_due_for_renewal?(config) do
+      if Periodic.cert_due_for_renewal?(config) || SiteEncrypt.certificate_subjects_changed?(config) do
         start_renew(config)
       else
         SiteEncrypt.log(config, [
@@ -101,7 +101,9 @@ defmodule SiteEncrypt.Certification do
   end
 
   defp start_renew(config) do
-    root = Registry.root(config.id)
-    Parent.Client.start_child(root, {SiteEncrypt.Certification.Job, config})
+    Parent.Client.start_child(
+      Registry.root(config.id),
+      {SiteEncrypt.Certification.Job, config}
+    )
   end
 end

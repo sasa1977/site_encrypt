@@ -4,7 +4,7 @@ defmodule SiteEncrypt.Registry do
   def child_spec(_),
     do: Supervisor.child_spec({Registry, keys: :unique, name: __MODULE__}, id: __MODULE__)
 
-  def root(id), do: GenServer.whereis({:via, Registry, {__MODULE__, id}})
+  def root(id), do: {:via, Registry, {__MODULE__, id}}
 
   def store_config(id, config) do
     {_, _} = Registry.update_value(__MODULE__, id, fn _ -> config end)
