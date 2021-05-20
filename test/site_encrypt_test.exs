@@ -61,17 +61,17 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
     end
 
     test "change configuration" do
+      first_cert = get_cert(TestEndpoint)
+
       config = SiteEncrypt.Registry.config(TestEndpoint)
       TestDomainProvider.set(config.domains ++ ["bar.localhost"])
-
       SiteEncrypt.Adapter.refresh_config(TestEndpoint)
 
       updated_config = SiteEncrypt.Registry.config(TestEndpoint)
+      assert updated_config.domains == config.domains ++ ["bar.localhost"]
 
-      TestDomainProvider.set(config.domains)
-      SiteEncrypt.Adapter.refresh_config(TestEndpoint)
-
-      assert config != updated_config
+      :ok = SiteEncrypt.force_certify(TestEndpoint)
+      assert get_cert(TestEndpoint).domains == first_cert.domains ++ ["bar.localhost"]
     end
 
     defmodule TestEndpoint do
