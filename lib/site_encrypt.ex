@@ -361,12 +361,7 @@ defmodule SiteEncrypt do
       else: {:error, ":directory_url must be a string or an `:internal` tuple"}
   end
 
-  @doc """
-  Check whether the current certificate contains all of the configured domains in the section subject_alt_name
-
-  In case there is a mismatch you might want to run `SiteEncrypt.force_certify/1` to expand the certificate with the
-  current set of domains.
-  """
+  @doc false
   def certificate_subjects_changed?(config) do
     case domains_certified(config) do
       {:ok, certificate_subjects} ->
@@ -377,11 +372,7 @@ defmodule SiteEncrypt do
     end
   end
 
-  @doc """
-  Retrieve a list of domains secured by the current certificate (via section `subject_alt_name`)
-  Returns either {:ok, certificate_subjects} or :error
-  """
-  def domains_certified(config) do
+  defp domains_certified(config) do
     with {:ok, pems} <- SiteEncrypt.client(config).pems(config),
          certificate <- X509.Certificate.from_pem!(pems.cert),
          {:Extension, _, _, dns_names} <-
