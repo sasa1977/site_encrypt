@@ -4,15 +4,15 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
     use ExUnit.Case, async: true
     use ExUnitProperties
     import SiteEncrypt.Phoenix.Test
-    alias __MODULE__.{TestEndpoint, TestDomainProvider}
+    alias __MODULE__.TestEndpoint
 
     setup_all do
-      start_supervised!(TestDomainProvider)
       start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
       :ok
     end
 
     setup do
+      TestEndpoint.clear_domains()
       clean_restart(TestEndpoint)
     end
 
@@ -63,12 +63,11 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
     test "change configuration" do
       first_cert = get_cert(TestEndpoint)
 
-      config = SiteEncrypt.Registry.config(TestEndpoint)
-      TestDomainProvider.set(config.domains ++ ["bar.localhost"])
+      TestEndpoint.set_domains(TestEndpoint.domains() ++ ["bar.localhost"])
       SiteEncrypt.Adapter.refresh_config(TestEndpoint)
 
       updated_config = SiteEncrypt.Registry.config(TestEndpoint)
-      assert updated_config.domains == config.domains ++ ["bar.localhost"]
+      assert updated_config.domains == first_cert.domains ++ ["bar.localhost"]
 
       :ok = SiteEncrypt.force_certify(TestEndpoint)
       assert get_cert(TestEndpoint).domains == first_cert.domains ++ ["bar.localhost"]
@@ -81,6 +80,10 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
       use SiteEncrypt.Phoenix
 
       @base_port 4000 + 100 * index
+
+      def domains, do: :persistent_term.get({__MODULE__, :domains}, ~w/localhost foo.localhost/)
+      def set_domains(domains), do: :persistent_term.put({__MODULE__, :domains}, domains)
+      def clear_domains, do: :persistent_term.erase({__MODULE__, :domains})
 
       @impl Phoenix.Endpoint
       def init(_key, config) do
@@ -97,7 +100,7 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
       def certification do
         SiteEncrypt.configure(
           directory_url: {:internal, port: @base_port + 2},
-          domains: TestDomainProvider.get(),
+          domains: domains(),
           emails: ["admin@foo.bar"],
           db_folder:
             Application.app_dir(
@@ -107,34 +110,6 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
           backup: Path.join(System.tmp_dir!(), "site_encrypt_#{unquote(client)}_backup.tgz"),
           client: unquote(client)
         )
-      end
-    end
-
-    defmodule TestDomainProvider do
-      use GenServer
-
-      def start_link(_args) do
-        GenServer.start_link(__MODULE__, ["localhost", "foo.localhost"], name: __MODULE__)
-      end
-
-      def get() do
-        GenServer.call(__MODULE__, :get)
-      end
-
-      def init(init_arg) do
-        {:ok, init_arg}
-      end
-
-      def set(domains) do
-        GenServer.call(__MODULE__, {:set, domains})
-      end
-
-      def handle_call(:get, _from, state) do
-        {:reply, state, state}
-      end
-
-      def handle_call({:set, domains}, _from, _state) do
-        {:reply, domains, domains}
       end
     end
   end
