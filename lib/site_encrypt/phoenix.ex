@@ -83,22 +83,26 @@ defmodule SiteEncrypt.Phoenix do
 
   @impl Adapter
   def http_port(_id, endpoint) do
-    http_config = endpoint.config(:http)
+    if server?(endpoint) do
+      http_config = endpoint.config(:http)
 
-    with true <- Keyword.keyword?(http_config),
-         port when is_integer(port) <- Keyword.get(http_config, :port) do
-      {:ok, port}
+      with true <- Keyword.keyword?(http_config),
+           port when is_integer(port) <- Keyword.get(http_config, :port) do
+        {:ok, port}
+      else
+        _ ->
+          raise_http_required(http_config)
+      end
     else
-      _ ->
-        raise_http_required(http_config)
+      :error
     end
   end
 
   defp raise_http_required(http_config) do
     raise "Unable to retrieve HTTP port from the HTTP configuration. SiteEncrypt relies on the Lets Encrypt " <>
-          "HTTP-01 challenge type which requires an HTTP version of the endpoint to be running and " <>
-          "the configuration received did not include an http port.\n" <>
-          "Received: #{inspect(http_config)}"
+            "HTTP-01 challenge type which requires an HTTP version of the endpoint to be running and " <>
+            "the configuration received did not include an http port.\n" <>
+            "Received: #{inspect(http_config)}"
   end
 
   defp server?(endpoint) do

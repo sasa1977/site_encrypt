@@ -361,32 +361,23 @@ defmodule SiteEncrypt do
       else: {:error, ":directory_url must be a string or an `:internal` tuple"}
   end
 
-  @doc """
-  Check whether the current certificate contains all of the configured domains in the section subject_alt_name
-
-  In case there is a mismatch you might want to run `SiteEncrypt.force_certify/1` to expand the certificate with the
-  current set of domains.
-  """
+  @doc false
   def certificate_subjects_changed?(config) do
-    case domains_certified(config) do
-      {:ok, certificate_subjects} -> config.domains |> Enum.sort() != certificate_subjects |> Enum.sort()
-      _ -> false
-    end
+    with {:ok, pems} <- client(config).pems(config),
+         {:ok, certified_domains} <- certified_domains(pems.cert),
+         do: MapSet.new(config.domains) != MapSet.new(certified_domains),
+         else: (:error -> false)
   end
 
-  @doc """
-  Retrieve a list of domains secured by the current certificate (via section `subject_alt_name`)
-  Returns either {:ok, certificate_subjects} or :error
-  """
-  def domains_certified(config) do
-    with {:ok, pems} <- SiteEncrypt.client(config).pems(config),
-         certificate <- X509.Certificate.from_pem!(pems.cert),
-         {:Extension, _, _, dns_names} <- X509.Certificate.extension(certificate, :subject_alt_name),
-         certificate_subjects <- dns_names |> Enum.map(fn {_, dns_name} -> to_string(dns_name) end)
-    do
-      {:ok, certificate_subjects}
-    else
-      _ -> :error
+  defp certified_domains(cert) do
+    certificate = X509.Certificate.from_pem!(cert)
+
+    case X509.Certificate.extension(certificate, :subject_alt_name) do
+      {:Extension, _, _, dns_names} ->
+        {:ok, Enum.map(dns_names, fn {_, dns_name} -> to_string(dns_name) end)}
+
+      _ ->
+        :error
     end
   end
 
