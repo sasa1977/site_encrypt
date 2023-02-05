@@ -45,27 +45,21 @@ defmodule SiteEncrypt.Phoenix do
   """
   defmacro configure_https(config, https_opts \\ []) do
     quote bind_quoted: [config: config, https_opts: https_opts] do
+      # Default to cowboy
+      adapter = Keyword.get(config, :adapter, :cowboy)
+
       https_config =
-        (Keyword.get(config, :https) || [])
-        |> Config.Reader.merge(https_opts)
-        |> Config.Reader.merge(SiteEncrypt.https_keys(__MODULE__))
+        case adapter do
+          :cowboy ->
+            (Keyword.get(config, :https) || [])
+            |> Config.Reader.merge(https_opts)
+            |> Config.Reader.merge(SiteEncrypt.https_keys(__MODULE__))
 
-      Keyword.put(config, :https, https_config)
-    end
-  end
-
-  @doc """
-  Merges paths to key and certificates to the `:https` configuration of the endpoint config for Bandit.
-
-  This is the same as `configure_https/2` but returns in the format that Bandit
-  (https://github.com/mtrudel/bandit/) expects.
-  """
-  defmacro configure_https_bandit(config, https_opts \\ []) do
-    quote bind_quoted: [config: config, https_opts: https_opts] do
-      https_config =
-        (Keyword.get(config, :https) || [])
-        |> Config.Reader.merge(https_opts)
-        |> Config.Reader.merge(transport_options: SiteEncrypt.https_keys(__MODULE__))
+          Bandit.PhoenixAdapter ->
+            (Keyword.get(config, :https) || [])
+            |> Config.Reader.merge(https_opts)
+            |> Config.Reader.merge(transport_options: SiteEncrypt.https_keys(__MODULE__))
+        end
 
       Keyword.put(config, :https, https_config)
     end
