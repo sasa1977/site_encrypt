@@ -11,10 +11,13 @@ defmodule SiteEncrypt.Acme.Server.Crypto do
 
     {ca_key, ca_cert} = ca_key_and_cert()
 
-    csr
-    |> CSR.public_key()
-    |> server_cert(ca_key, ca_cert, domains)
-    |> Certificate.to_pem()
+    signed_csr =
+      csr
+      |> CSR.public_key()
+      |> server_cert(ca_key, ca_cert, domains)
+      |> Certificate.to_pem()
+
+    "#{signed_csr}\n#{Certificate.to_pem(ca_cert)}\n"
   end
 
   def self_signed_chain(domains) do
