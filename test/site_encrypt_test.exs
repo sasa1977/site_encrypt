@@ -10,7 +10,9 @@ for {input, index} <- Enum.with_index(inputs),
               input.adapter,
               "#{Macro.camelize(to_string(input.client))}Test"
             ]) do
-    use ExUnit.Case, async: true
+    # Tests are sync because "backup and restore" fails in an async setting.
+    # TODO: investigate why and either fix it or extract that test into a sync case.
+    use ExUnit.Case, async: false
     use ExUnitProperties
     import SiteEncrypt.Phoenix.Test
     alias __MODULE__.TestEndpoint
@@ -83,7 +85,7 @@ for {input, index} <- Enum.with_index(inputs),
       use Phoenix.Endpoint, otp_app: :site_encrypt
       use SiteEncrypt.Phoenix
 
-      @base_port 4000 + 100 * index
+      @base_port 40000 + 100 * index
 
       def domains, do: :persistent_term.get({__MODULE__, :domains}, ~w/localhost foo.localhost/)
       def set_domains(domains), do: :persistent_term.put({__MODULE__, :domains}, domains)
