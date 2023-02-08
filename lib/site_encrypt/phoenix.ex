@@ -46,11 +46,11 @@ defmodule SiteEncrypt.Phoenix do
   defmacro configure_https(config, https_opts \\ []) do
     quote bind_quoted: [config: config, https_opts: https_opts] do
       # Default to cowboy
-      adapter = Keyword.get(config, :adapter, :cowboy)
+      adapter = Keyword.get(config, :adapter, Phoenix.Endpoint.Cowboy2Adapter)
 
       https_config =
         case adapter do
-          :cowboy ->
+          Phoenix.Endpoint.Cowboy2Adapter ->
             (Keyword.get(config, :https) || [])
             |> Config.Reader.merge(https_opts)
             |> Config.Reader.merge(SiteEncrypt.https_keys(__MODULE__))
