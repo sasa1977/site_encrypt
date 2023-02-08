@@ -41,8 +41,8 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
 
         # remove db folder and restart the site
         SiteEncrypt.Adapter.restart_site(TestEndpoint, fn ->
-          File.rm_rf!(config.db_folder)
           :ssl.clear_pem_cache()
+          File.rm_rf!(config.db_folder)
         end)
 
         # make sure the cert is restored

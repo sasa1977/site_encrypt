@@ -22,7 +22,7 @@ defmodule PhoenixDemo.MixProject do
     [
       {:phoenix, "~> 1.5"},
       {:jason, "~> 1.0"},
-      {:plug_cowboy, "~> 2.2"},
+      {:plug_cowboy, "~> 2.5"},
       {:site_encrypt, path: "../.."}
     ]
   end

@@ -31,11 +31,11 @@ defmodule SiteEncrypt.MixProject do
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
       {:jason, "~> 1.0"},
       {:jose, "~> 1.10"},
-      {:mint, "~> 1.1"},
+      {:mint, "~> 1.4"},
       {:nimble_options, "~> 0.3"},
       {:parent, "~> 0.11"},
       {:phoenix, "~> 1.5", optional: true},
-      {:plug_cowboy, "~> 2.2", optional: true},
+      {:plug_cowboy, "~> 2.5", optional: true},
       {:plug, "~> 1.7", optional: true},
       {:stream_data, "~> 0.1", only: [:dev, :test]},
       {:x509, "~> 0.3"}
@@ -59,9 +59,7 @@ defmodule SiteEncrypt.MixProject do
       links: %{
         "Github" => "https://github.com/sasa1977/site_encrypt",
         "Changelog" =>
-          "https://github.com/sasa1977/site_encrypt/blob/#{@version}/CHANGELOG.md##{
-            String.replace(@version, ".", "")
-          }"
+          "https://github.com/sasa1977/site_encrypt/blob/#{@version}/CHANGELOG.md##{String.replace(@version, ".", "")}"
       }
     ]
   end
