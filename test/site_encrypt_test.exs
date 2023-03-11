@@ -1,7 +1,18 @@
-for {client, index} <- Enum.with_index([:native, :certbot]),
-    client != :certbot or System.get_env("CI") == "true" do
-  defmodule Module.concat(SiteEncrypt, "#{Macro.camelize(to_string(client))}Test") do
-    use ExUnit.Case, async: true
+inputs =
+  for adapter <- [Phoenix.Endpoint.Cowboy2Adapter, Bandit.PhoenixAdapter],
+      client <- [:native, :certbot],
+      do: %{adapter: adapter, client: client}
+
+for {input, index} <- Enum.with_index(inputs),
+    input.client != :certbot or System.get_env("CI") == "true" do
+  defmodule Module.concat([
+              SiteEncrypt,
+              input.adapter,
+              "#{Macro.camelize(to_string(input.client))}Test"
+            ]) do
+    # Tests are sync because "backup and restore" fails in an async setting.
+    # TODO: investigate why and either fix it or extract that test into a sync case.
+    use ExUnit.Case, async: false
     use ExUnitProperties
     import SiteEncrypt.Phoenix.Test
     alias __MODULE__.TestEndpoint
@@ -33,7 +44,7 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
     end
 
     # due to unsafe symlinks, restore doesn't work for certbot client on OTP 23+
-    if client != :certbot do
+    if input.client != :certbot do
       test "backup and restore" do
         config = SiteEncrypt.Registry.config(TestEndpoint)
         first_cert = get_cert(TestEndpoint)
@@ -74,7 +85,7 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
       use Phoenix.Endpoint, otp_app: :site_encrypt
       use SiteEncrypt.Phoenix
 
-      @base_port 4000 + 100 * index
+      @base_port 40000 + 100 * index
 
       def domains, do: :persistent_term.get({__MODULE__, :domains}, ~w/localhost foo.localhost/)
       def set_domains(domains), do: :persistent_term.put({__MODULE__, :domains}, domains)
@@ -84,6 +95,7 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
       def init(_key, config) do
         {:ok,
          config
+         |> Keyword.put(:adapter, unquote(input.adapter))
          |> SiteEncrypt.Phoenix.configure_https(port: @base_port + 1)
          |> Keyword.merge(
            url: [scheme: "https", host: "localhost", port: @base_port + 1],
@@ -100,10 +112,14 @@ for {client, index} <- Enum.with_index([:native, :certbot]),
           db_folder:
             Application.app_dir(
               :site_encrypt,
-              Path.join(["priv", "site_encrypt_#{unquote(client)}"])
+              Path.join([
+                "priv",
+                "site_encrypt_#{unquote(input.client)}_#{unquote(input.adapter)}"
+              ])
             ),
-          backup: Path.join(System.tmp_dir!(), "site_encrypt_#{unquote(client)}_backup.tgz"),
-          client: unquote(client)
+          backup:
+            Path.join(System.tmp_dir!(), "site_encrypt_#{unquote(input.client)}_backup.tgz"),
+          client: unquote(input.client)
         )
       end
     end

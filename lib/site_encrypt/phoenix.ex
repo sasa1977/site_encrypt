@@ -21,7 +21,7 @@ defmodule SiteEncrypt.Phoenix do
   def start_link(endpoint), do: Adapter.start_link(__MODULE__, endpoint, endpoint)
 
   @doc """
-  Merges paths to key and certificates to the `:https` configuration of the endpoint config.
+  Merges paths to key and certificates to the `:https` configuration of the endpoint config for Cowboy.
 
   Invoke this macro from `c:Phoenix.Endpoint.init/2` to complete the https configuration:
 
@@ -45,10 +45,21 @@ defmodule SiteEncrypt.Phoenix do
   """
   defmacro configure_https(config, https_opts \\ []) do
     quote bind_quoted: [config: config, https_opts: https_opts] do
+      # Default to cowboy
+      adapter = Keyword.get(config, :adapter, Phoenix.Endpoint.Cowboy2Adapter)
+
       https_config =
-        (Keyword.get(config, :https) || [])
-        |> Config.Reader.merge(https_opts)
-        |> Config.Reader.merge(SiteEncrypt.https_keys(__MODULE__))
+        case adapter do
+          Phoenix.Endpoint.Cowboy2Adapter ->
+            (Keyword.get(config, :https) || [])
+            |> Config.Reader.merge(https_opts)
+            |> Config.Reader.merge(SiteEncrypt.https_keys(__MODULE__))
+
+          Bandit.PhoenixAdapter ->
+            (Keyword.get(config, :https) || [])
+            |> Config.Reader.merge(https_opts)
+            |> Config.Reader.merge(transport_options: SiteEncrypt.https_keys(__MODULE__))
+        end
 
       Keyword.put(config, :https, https_config)
     end

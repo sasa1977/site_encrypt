@@ -19,6 +19,7 @@ ex_unit_opts =
 
 ExUnit.start(ex_unit_opts)
 Application.ensure_all_started(:ranch)
+Application.ensure_all_started(:bandit)
 Application.ensure_all_started(:phoenix)
 
 # Custom test translator which drops the verify_none warning log.

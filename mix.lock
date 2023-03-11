@@ -1,4 +1,5 @@
 %{
+  "bandit": {:hex, :bandit, "0.6.8", "4805ad7c946ed81021b405946e0d04eaa24eafb74a40d5b59dbc3ff3b6137ce1", [:mix], [{:hpax, "~> 0.1.1", [hex: :hpax, repo: "hexpm", optional: false]}, {:plug, "~> 1.14", [hex: :plug, repo: "hexpm", optional: false]}, {:thousand_island, "~> 0.5.14", [hex: :thousand_island, repo: "hexpm", optional: false]}, {:websock, "~> 0.4.3", [hex: :websock, repo: "hexpm", optional: false]}], "hexpm", "a6630365ef681d990b455ad904f647b279312fd41467fd370e5a397765a5aadd"},
   "base64url": {:hex, :base64url, "0.0.1", "36a90125f5948e3afd7be97662a1504b934dd5dac78451ca6e9abf85a10286be", [:rebar], [], "hexpm"},
   "castore": {:hex, :castore, "0.1.22", "4127549e411bedd012ca3a308dede574f43819fe9394254ca55ab4895abfa1a2", [:mix], [], "hexpm", "c17576df47eb5aa1ee40cc4134316a99f5cad3e215d5c77b8dd3cfef12a22cac"},
   "cowboy": {:hex, :cowboy, "2.9.0", "865dd8b6607e14cf03282e10e934023a1bd8be6f6bacf921a7e2a96d800cd452", [:make, :rebar3], [{:cowlib, "2.11.0", [hex: :cowlib, repo: "hexpm", optional: false]}, {:ranch, "1.8.0", [hex: :ranch, repo: "hexpm", optional: false]}], "hexpm", "2c729f934b4e1aa149aff882f57c6372c15399a20d54f65c8d67bef583021bde"},
@@ -28,5 +29,7 @@
   "ranch": {:hex, :ranch, "1.8.0", "8c7a100a139fd57f17327b6413e4167ac559fbc04ca7448e9be9057311597a1d", [:make, :rebar3], [], "hexpm", "49fbcfd3682fab1f5d109351b61257676da1a2fdbe295904176d5e521a2ddfe5"},
   "stream_data": {:hex, :stream_data, "0.5.0", "b27641e58941685c75b353577dc602c9d2c12292dd84babf506c2033cd97893e", [:mix], [], "hexpm", "012bd2eec069ada4db3411f9115ccafa38540a3c78c4c0349f151fc761b9e271"},
   "telemetry": {:hex, :telemetry, "0.4.3", "a06428a514bdbc63293cd9a6263aad00ddeb66f608163bdec7c8995784080818", [:rebar3], [], "hexpm", "eb72b8365ffda5bed68a620d1da88525e326cb82a75ee61354fc24b844768041"},
+  "thousand_island": {:hex, :thousand_island, "0.5.17", "efbb2f045105c77dbe8c1da722d064f7afcfb503f6ab2441d05a04c7dd6294de", [:mix], [{:telemetry, "~> 0.4 or ~> 1.0", [hex: :telemetry, repo: "hexpm", optional: false]}], "hexpm", "aeba8d43358c4db77abb87cf47c3f483aebc377bf0dbbdb1b6a20473905dfb70"},
+  "websock": {:hex, :websock, "0.4.3", "184ac396bdcd3dfceb5b74c17d221af659dd559a95b1b92041ecb51c9b728093", [:mix], [], "hexpm", "5e4dd85f305f43fd3d3e25d70bec4a45228dfed60f0f3b072d8eddff335539cf"},
   "x509": {:hex, :x509, "0.8.2", "27b11ae9637dc5cfea18e6547c4c5a0fce8af024851260223d00fe0755dcf372", [:mix], [], "hexpm", "36b92a8305d034b6e1819b61890676beaba221692065e30611d0c92e8a978c7c"},
 }
