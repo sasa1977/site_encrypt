@@ -26,13 +26,13 @@ defmodule SiteEncrypt.MixProject do
   defp deps do
     [
       {:bandit, "~> 0.6", optional: true},
-      {:castore, "~> 0.1"},
+      {:castore, "~> 0.1 or ~> 1.0"},
       {:dialyxir, "~> 1.0", only: :dev, runtime: false},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
       {:jason, "~> 1.0"},
       {:jose, "~> 1.10"},
       {:mint, "~> 1.4"},
-      {:nimble_options, "~> 0.3"},
+      {:nimble_options, "~> 0.3 or ~> 1.0"},
       {:parent, "~> 0.11"},
       {:phoenix, "~> 1.5", optional: true},
       {:plug_cowboy, "~> 2.5", optional: true},
