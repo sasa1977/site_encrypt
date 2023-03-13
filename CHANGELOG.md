@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- added `SiteEncrypt.refresh_config/1`
+- added the support for bandit web server
+
 ## 0.4.2
 
 - correctly handle relative paths
