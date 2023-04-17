@@ -244,20 +244,56 @@ defmodule SiteEncrypt.Acme.Server do
     {account, SiteEncrypt.Acme.Server.Account.new_order(config, account, domains)}
   end
 
-  defp endpoint_spec(config, port) do
-    key = X509.PrivateKey.new_rsa(1024)
-    cert = X509.Certificate.self_signed(key, "/C=US/ST=CA/O=Acme/CN=ECDSA Root CA")
+  cond do
+    Code.ensure_loaded?(Plug.Cowboy) ->
+      defp endpoint_spec(config, port) do
+        key = X509.PrivateKey.new_rsa(1024)
+        cert = X509.Certificate.self_signed(key, "/C=US/ST=CA/O=Acme/CN=ECDSA Root CA")
 
-    adapter_opts = [
-      plug: {SiteEncrypt.Acme.Server.Plug, config},
-      scheme: :https,
-      key: {:PrivateKeyInfo, X509.PrivateKey.to_der(key, wrap: true)},
-      cert: X509.Certificate.to_der(cert),
-      transport_options: [num_acceptors: 1],
-      ref: :"#{__MODULE__}_#{port}",
-      options: [port: port]
-    ]
+        adapter_opts = [
+          plug: {SiteEncrypt.Acme.Server.Plug, config},
+          scheme: :https,
+          key: {:PrivateKeyInfo, X509.PrivateKey.to_der(key, wrap: true)},
+          cert: X509.Certificate.to_der(cert),
+          transport_options: [num_acceptors: 1],
+          ref: :"#{__MODULE__}_#{port}",
+          options: [port: port]
+        ]
 
-    Plug.Cowboy.child_spec(adapter_opts)
+        Plug.Cowboy.child_spec(adapter_opts)
+      end
+
+    Code.ensure_loaded?(Bandit) ->
+      defp endpoint_spec(config, port) do
+        key = X509.PrivateKey.new_rsa(1024)
+        cert = X509.Certificate.self_signed(key, "/C=US/ST=CA/O=Acme/CN=ECDSA Root CA")
+
+        adapter_opts = [
+          plug: {SiteEncrypt.Acme.Server.Plug, config},
+          scheme: :https,
+          thousand_island_options: [
+            num_acceptors: 1,
+            port: port,
+            transport_options: [
+              key: {:PrivateKeyInfo, X509.PrivateKey.to_der(key, wrap: true)},
+              cert: X509.Certificate.to_der(cert)
+            ]
+          ]
+        ]
+
+        Bandit.child_spec(adapter_opts)
+      end
+
+    true ->
+      defp endpoint_spec(config, port) do
+        raise """
+        missing HTTP server
+
+        Please add either :plug_cowboy or :bandit to your mix.exs :deps list and run:
+
+            mix deps.get
+            mix deps.compile --force site_encrypt
+        """
+      end
   end
 end
