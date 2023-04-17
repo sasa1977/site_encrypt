@@ -58,7 +58,9 @@ defmodule SiteEncrypt.Phoenix do
           Bandit.PhoenixAdapter ->
             (Keyword.get(config, :https) || [])
             |> Config.Reader.merge(https_opts)
-            |> Config.Reader.merge(transport_options: SiteEncrypt.https_keys(__MODULE__))
+            |> Config.Reader.merge(
+              thousand_island_options: [transport_options: SiteEncrypt.https_keys(__MODULE__)]
+            )
         end
 
       Keyword.put(config, :https, https_config)
