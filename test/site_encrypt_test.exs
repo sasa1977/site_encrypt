@@ -17,6 +17,12 @@ for {input, index} <- Enum.with_index(inputs),
     import SiteEncrypt.Phoenix.Test
     alias __MODULE__.TestEndpoint
 
+    server_adapter =
+      case input.adapter do
+        Phoenix.Endpoint.Cowboy2Adapter -> :cowboy
+        Bandit.PhoenixAdapter -> :bandit
+      end
+
     setup_all do
       start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
       :ok
@@ -106,7 +112,7 @@ for {input, index} <- Enum.with_index(inputs),
       @impl SiteEncrypt
       def certification do
         SiteEncrypt.configure(
-          directory_url: {:internal, port: @base_port + 2},
+          directory_url: {:internal, port: @base_port + 2, adapter: unquote(server_adapter)},
           domains: domains(),
           emails: ["admin@foo.bar"],
           db_folder:

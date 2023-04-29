@@ -13,9 +13,23 @@ defmodule SiteEncrypt.Acme.Server do
   @type headers :: [{String.t(), String.t()}]
   @type body :: binary
   @type domains :: [String.t()]
+  @type opts :: [log_level: Logger.level(), adapter: adapter]
+  @type adapter :: :cowboy | :bandit
 
-  @spec start_link(term, pos_integer, dns_fun, log_level: Logger.level()) :: Supervisor.on_start()
+  defp auto_determine_adapter do
+    loaded_apps =
+      for {app, _, _} <- Application.loaded_applications(), into: MapSet.new(), do: app
+
+    cond do
+      MapSet.member?(loaded_apps, :cowboy) -> :cowboy
+      MapSet.member?(loaded_apps, :bandit) -> :bandit
+      true -> raise "Local ACME server can only run if cowboy or bandit app is present"
+    end
+  end
+
+  @spec start_link(term, pos_integer, dns_fun, opts) :: Supervisor.on_start()
   def start_link(id, port, dns, opts \\ []) do
+    adapter = Keyword.get_lazy(opts, :adapter, &auto_determine_adapter/0)
     Logger.log(Keyword.get(opts, :log_level, :debug), "Running local ACME server at port #{port}")
 
     site = "https://localhost:#{port}"
@@ -29,7 +43,7 @@ defmodule SiteEncrypt.Acme.Server do
 
     Parent.Supervisor.start_link([
       {SiteEncrypt.Acme.Server.Db, acme_server_config},
-      endpoint_spec(acme_server_config, port)
+      endpoint_spec(adapter, acme_server_config, port)
     ])
   end
 
@@ -244,7 +258,7 @@ defmodule SiteEncrypt.Acme.Server do
     {account, SiteEncrypt.Acme.Server.Account.new_order(config, account, domains)}
   end
 
-  defp endpoint_spec(config, port) do
+  defp endpoint_spec(:cowboy, config, port) do
     key = X509.PrivateKey.new_rsa(1024)
     cert = X509.Certificate.self_signed(key, "/C=US/ST=CA/O=Acme/CN=ECDSA Root CA")
 
@@ -259,5 +273,25 @@ defmodule SiteEncrypt.Acme.Server do
     ]
 
     Plug.Cowboy.child_spec(adapter_opts)
+  end
+
+  defp endpoint_spec(:bandit, config, port) do
+    key = X509.PrivateKey.new_rsa(1024)
+    cert = X509.Certificate.self_signed(key, "/C=US/ST=CA/O=Acme/CN=ECDSA Root CA")
+
+    adapter_opts = [
+      plug: {SiteEncrypt.Acme.Server.Plug, config},
+      scheme: :https,
+      thousand_island_options: [
+        num_acceptors: 1,
+        port: port,
+        transport_options: [
+          key: {:PrivateKeyInfo, X509.PrivateKey.to_der(key, wrap: true)},
+          cert: X509.Certificate.to_der(cert)
+        ]
+      ]
+    ]
+
+    Bandit.child_spec(adapter_opts)
   end
 end
