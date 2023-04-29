@@ -90,18 +90,15 @@ defmodule SiteEncrypt.Adapter do
     config = adapter_config.certification
 
     with {:ok, site_port} <- state.callback.http_port(state.id, state.arg),
-         {:ok, acme_server_port} when not is_nil(acme_server_port) <- acme_server_port(config) do
+         %{directory_url: {:internal, acme_server_opts}} <- config do
+      {acme_server_port, acme_server_opts} = Keyword.pop!(acme_server_opts, :port)
       dns = dns(config.id, site_port)
-      Acme.Server.start_link(config.id, acme_server_port, dns, log_level: config.log_level)
+      acme_server_opts = [log_level: config.log_level] ++ acme_server_opts
+      Acme.Server.start_link(config.id, acme_server_port, dns, acme_server_opts)
     else
       _ -> :ignore
     end
   end
-
-  defp acme_server_port(%{directory_url: {:internal, acme_server_opts}}),
-    do: Keyword.fetch(acme_server_opts, :port)
-
-  defp acme_server_port(_), do: :error
 
   defp dns(id, endpoint_port) do
     fn ->
