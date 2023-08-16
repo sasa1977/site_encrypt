@@ -258,10 +258,15 @@ defmodule SiteEncrypt.Acme.Server do
     {account, SiteEncrypt.Acme.Server.Account.new_order(config, account, domains)}
   end
 
-  defp endpoint_spec(:cowboy, config, port) do
+  defp endpoint_spec(type, config, port) do
     key = X509.PrivateKey.new_rsa(1024)
     cert = X509.Certificate.self_signed(key, "/C=US/ST=CA/O=Acme/CN=ECDSA Root CA")
 
+    {adapter, adapter_opts} = endpoint_spec(type, config, port, key, cert)
+    apply(adapter, :child_spec, [adapter_opts])
+  end
+
+  defp endpoint_spec(:cowboy, config, port, key, cert) do
     adapter_opts = [
       plug: {SiteEncrypt.Acme.Server.Plug, config},
       scheme: :https,
@@ -272,13 +277,10 @@ defmodule SiteEncrypt.Acme.Server do
       options: [port: port]
     ]
 
-    Plug.Cowboy.child_spec(adapter_opts)
+    {Plug.Cowboy, adapter_opts}
   end
 
-  defp endpoint_spec(:bandit, config, port) do
-    key = X509.PrivateKey.new_rsa(1024)
-    cert = X509.Certificate.self_signed(key, "/C=US/ST=CA/O=Acme/CN=ECDSA Root CA")
-
+  defp endpoint_spec(:bandit, config, port, key, cert) do
     adapter_opts = [
       plug: {SiteEncrypt.Acme.Server.Plug, config},
       scheme: :https,
@@ -292,6 +294,6 @@ defmodule SiteEncrypt.Acme.Server do
       ]
     ]
 
-    Bandit.child_spec(adapter_opts)
+    {Bandit, adapter_opts}
   end
 end
