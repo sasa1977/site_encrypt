@@ -259,7 +259,7 @@ defmodule SiteEncrypt.Acme.Server do
   end
 
   defp endpoint_spec(adapter, config, port) do
-    key = X509.PrivateKey.new_rsa(1024)
+    key = X509.PrivateKey.new_rsa(2048)
     cert = X509.Certificate.self_signed(key, "/C=US/ST=CA/O=Acme/CN=ECDSA Root CA")
 
     adapter_spec = adapter_spec(adapter, config, port, key, cert)

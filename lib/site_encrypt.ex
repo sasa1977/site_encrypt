@@ -194,7 +194,7 @@ defmodule SiteEncrypt do
         |> Map.merge(unquote(Macro.escape(overrides)))
         |> Map.update!(:backup, &(&1 && Path.expand(&1)))
 
-      if SiteEncrypt.local_ca?(config), do: %{config | key_size: 1024}, else: config
+      if SiteEncrypt.local_ca?(config), do: %{config | key_size: 2048}, else: config
     end
   end
 

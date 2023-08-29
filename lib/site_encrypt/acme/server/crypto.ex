@@ -23,7 +23,7 @@ defmodule SiteEncrypt.Acme.Server.Crypto do
   def self_signed_chain(domains) do
     {ca_key, ca_cert} = ca_key_and_cert()
 
-    server_key = PrivateKey.new_rsa(1024)
+    server_key = PrivateKey.new_rsa(2048)
 
     server_cert =
       server_key
@@ -38,7 +38,7 @@ defmodule SiteEncrypt.Acme.Server.Crypto do
   end
 
   defp ca_key_and_cert() do
-    ca_key = PrivateKey.new_rsa(1024)
+    ca_key = PrivateKey.new_rsa(2048)
     ca_cert = Certificate.self_signed(ca_key, "/O=Site Encrypt/CN=Acme Server CA", template: :ca)
     {ca_key, ca_cert}
   end
