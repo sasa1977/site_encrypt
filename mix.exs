@@ -25,7 +25,7 @@ defmodule SiteEncrypt.MixProject do
 
   defp deps do
     [
-      {:bandit, "~> 0.7", optional: true},
+      {:bandit, "~> 0.7 or ~> 1.0", optional: true},
       {:castore, "~> 0.1 or ~> 1.0"},
       {:dialyxir, "~> 1.0", only: :dev, runtime: false},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
