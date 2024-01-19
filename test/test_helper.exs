@@ -29,7 +29,8 @@ defmodule SiteEncrypt.Test.LoggerTranslator do
   def translate(_min_level, _level, _kind, message) do
     # This warning is emitted by the Erlang error logger. In local tests we're not validating
     # the peer, so we're dropping the warning.
-    desc = 'Server authenticity is not verified since certificate path validation is not enabled'
+    desc =
+      ~c"Server authenticity is not verified since certificate path validation is not enabled"
 
     case message do
       {:logger, %{description: ^desc}} -> :skip

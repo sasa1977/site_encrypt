@@ -6,7 +6,7 @@ defmodule SiteEncrypt.Acme.Server do
 
   @type start_opts :: [id: SiteEncrypt.id(), dns: dns_fun, port: pos_integer()]
   @type config :: %{id: SiteEncrypt.id(), site: String.t(), site_uri: URI.t(), dns: dns_fun}
-  @type dns_fun :: (() -> %{String.t() => String.t()})
+  @type dns_fun :: (-> %{String.t() => String.t()})
   @type method :: :get | :head | :put | :post | :delete
   @type handle_response :: %{status: status, headers: headers, body: body}
   @type status :: pos_integer

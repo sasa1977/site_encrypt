@@ -58,7 +58,14 @@ defmodule SiteEncrypt.Phoenix.Test do
   """
   @spec get_cert(module) :: %{der: binary, issuer: String.t(), domains: [String.t()]}
   def get_cert(endpoint) do
-    {:ok, socket} = :ssl.connect('localhost', https_port(endpoint), [{:verify, :verify_none}], :timer.seconds(5))
+    {:ok, socket} =
+      :ssl.connect(
+        ~c"localhost",
+        https_port(endpoint),
+        [{:verify, :verify_none}],
+        :timer.seconds(5)
+      )
+
     {:ok, der_cert} = :ssl.peercert(socket)
     :ssl.close(socket)
     cert = X509.Certificate.from_der!(der_cert)
