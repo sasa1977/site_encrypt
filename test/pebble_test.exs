@@ -6,7 +6,7 @@ defmodule SiteEncrypt.PebbleTest do
   @moduletag :pebble
 
   setup_all do
-    start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
+    start_supervised!({SiteEncrypt.Phoenix, endpoint: TestEndpoint})
     :ok
   end
 

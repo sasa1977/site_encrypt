@@ -10,7 +10,7 @@ defmodule SiteEncrypt.Certification.PeriodicTest do
   alias SiteEncrypt.Certification.Periodic
 
   setup_all do
-    start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
+    start_supervised!({SiteEncrypt.Phoenix, endpoint: TestEndpoint})
     :ok
   end
 

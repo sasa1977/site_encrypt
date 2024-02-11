@@ -8,17 +8,22 @@ defmodule SiteEncrypt.Phoenix do
   2. Configure https via `configure_https/2`.
   3. Add the implementation of `c:SiteEncrypt.certification/0` to the endpoint (the
     `@behaviour SiteEncrypt` is injected when this module is used).
-  4. Start the endpoint by providing `{SiteEncrypt.Phoenix, PhoenixDemo.Endpoint}` as a supervisor child.
+  4. Start the endpoint by providing `{SiteEncrypt.Phoenix, endpoint: PhoenixDemo.Endpoint}` as a supervisor child.
   """
 
   use SiteEncrypt.Adapter
   alias SiteEncrypt.Adapter
 
-  @spec child_spec(endpoint :: module) :: Supervisor.child_spec()
+  @type start_opts :: [endpoint: module, endpoint_opts: Keyword.t()]
+
+  @spec child_spec(start_opts) :: Supervisor.child_spec()
 
   @doc "Starts the endpoint managed by `SiteEncrypt`."
-  @spec start_link(endpoint :: module) :: Supervisor.on_start()
-  def start_link(endpoint), do: Adapter.start_link(__MODULE__, endpoint, endpoint)
+  @spec start_link(start_opts) :: Supervisor.on_start()
+  def start_link(opts) do
+    id = Keyword.fetch!(opts, :endpoint)
+    Adapter.start_link(__MODULE__, id, opts)
+  end
 
   @doc """
   Merges paths to key and certificates to the `:https` configuration of the endpoint config for Cowboy.
@@ -87,15 +92,20 @@ defmodule SiteEncrypt.Phoenix do
   end
 
   @impl Adapter
-  def config(_id, endpoint) do
+  def config(_id, opts) do
+    endpoint = Keyword.fetch!(opts, :endpoint)
+    endpoint_opts = Keyword.get(opts, :endpoint_opts, [])
+
     %{
       certification: endpoint.certification(),
-      site_spec: endpoint.child_spec([])
+      site_spec: {endpoint, endpoint_opts}
     }
   end
 
   @impl Adapter
-  def http_port(_id, endpoint) do
+  def http_port(_id, opts) do
+    endpoint = Keyword.fetch!(opts, :endpoint)
+
     if server?(endpoint) do
       http_config = endpoint.config(:http)
 

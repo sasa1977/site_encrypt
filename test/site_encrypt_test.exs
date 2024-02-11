@@ -24,7 +24,7 @@ for {input, index} <- Enum.with_index(inputs),
       end
 
     setup_all do
-      start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
+      start_supervised!({SiteEncrypt.Phoenix, endpoint: TestEndpoint})
       :ok
     end
 

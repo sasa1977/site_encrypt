@@ -108,7 +108,7 @@ A basic demo Phoenix project is available [here](https://github.com/sasa1977/sit
       use Application
 
       def start(_type, _args) do
-        children = [{SiteEncrypt.Phoenix, PhoenixDemo.Endpoint}]
+        children = [{SiteEncrypt.Phoenix, endpoint: PhoenixDemo.Endpoint}]
         opts = [strategy: :one_for_one, name: PhoenixDemo.Supervisor]
         Supervisor.start_link(children, opts)
       end
