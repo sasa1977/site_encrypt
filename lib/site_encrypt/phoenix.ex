@@ -25,53 +25,6 @@ defmodule SiteEncrypt.Phoenix do
     Adapter.start_link(__MODULE__, id, opts)
   end
 
-  @doc """
-  Merges paths to key and certificates to the `:https` configuration of the endpoint config for Cowboy.
-
-  Invoke this macro from `c:Phoenix.Endpoint.init/2` to complete the https configuration:
-
-      defmodule MyEndpoint do
-        # ...
-
-        @impl Phoenix.Endpoint
-        def init(_key, config) do
-          # this will merge key, cert, and chain into `:https` configuration from config.exs
-          {:ok, SiteEncrypt.Phoenix.configure_https(config)}
-
-          # to completely configure https from `init/2`, invoke:
-          #   SiteEncrypt.Phoenix.configure_https(config, port: 4001, ...)
-        end
-
-        # ...
-      end
-
-  The `options` are any valid adapter HTTPS options. For many great tips on configuring HTTPS for
-  production refer to the [Plug HTTPS guide](https://hexdocs.pm/plug/https.html#content).
-  """
-  defmacro configure_https(config, https_opts \\ []) do
-    quote bind_quoted: [config: config, https_opts: https_opts] do
-      # Default to cowboy
-      adapter = Keyword.get(config, :adapter, Phoenix.Endpoint.Cowboy2Adapter)
-
-      https_config =
-        case adapter do
-          Phoenix.Endpoint.Cowboy2Adapter ->
-            (Keyword.get(config, :https) || [])
-            |> Config.Reader.merge(https_opts)
-            |> Config.Reader.merge(SiteEncrypt.https_keys(__MODULE__))
-
-          Bandit.PhoenixAdapter ->
-            (Keyword.get(config, :https) || [])
-            |> Config.Reader.merge(https_opts)
-            |> Config.Reader.merge(
-              thousand_island_options: [transport_options: SiteEncrypt.https_keys(__MODULE__)]
-            )
-        end
-
-      Keyword.put(config, :https, https_config)
-    end
-  end
-
   @doc false
   defmacro __using__(_opts) do
     quote do
@@ -88,18 +41,57 @@ defmodule SiteEncrypt.Phoenix do
       def handle_new_cert, do: :ok
 
       defoverridable handle_new_cert: 0
+
+      @doc false
+      def app_env_config, do: Application.get_env(@otp_app, __MODULE__, [])
     end
   end
 
   @impl Adapter
-  def config(_id, opts) do
+  def config(id, opts) do
     endpoint = Keyword.fetch!(opts, :endpoint)
     endpoint_opts = Keyword.get(opts, :endpoint_opts, [])
 
     %{
       certification: endpoint.certification(),
-      site_spec: {endpoint, endpoint_opts}
+      site_spec: %{
+        id: id,
+        start: {__MODULE__, :start_endpoint, [id, endpoint, endpoint_opts]},
+        type: :supervisor
+      }
     }
+  end
+
+  @doc false
+  def start_endpoint(id, endpoint, endpoint_opts) do
+    adapter =
+      Keyword.get_lazy(
+        # 1. Try to get adapter from opts passed to start_link
+        endpoint_opts,
+        :adapter,
+        fn ->
+          Keyword.get(
+            # 2. Try to get adapter from app env
+            endpoint.app_env_config(),
+            :adapter,
+            # 3. If adapter is not provided, default to cowboy
+            Phoenix.Endpoint.Cowboy2Adapter
+          )
+        end
+      )
+
+    endpoint_opts =
+      case adapter do
+        Phoenix.Endpoint.Cowboy2Adapter ->
+          Config.Reader.merge(endpoint_opts, https: SiteEncrypt.https_keys(id))
+
+        Bandit.PhoenixAdapter ->
+          Config.Reader.merge(endpoint_opts,
+            https: [thousand_island_options: [transport_options: SiteEncrypt.https_keys(id)]]
+          )
+      end
+
+    endpoint.start_link(endpoint_opts)
   end
 
   @impl Adapter
