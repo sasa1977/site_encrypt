@@ -26,7 +26,7 @@ defmodule SiteEncrypt.Phoenix do
   end
 
   @doc false
-  defmacro __using__(_opts) do
+  defmacro __using__(static_opts) do
     quote do
       unless Enum.member?(@behaviour, Phoenix.Endpoint),
         do: raise("SiteEncrypt.Phoenix must be used after Phoenix.Endpoint")
@@ -44,6 +44,20 @@ defmodule SiteEncrypt.Phoenix do
 
       @doc false
       def app_env_config, do: Application.get_env(@otp_app, __MODULE__, [])
+
+      defoverridable child_spec: 1
+
+      def child_spec(opts) do
+        Supervisor.child_spec(
+          {
+            SiteEncrypt.Phoenix,
+            unquote(static_opts)
+            |> Keyword.merge(opts)
+            |> Keyword.put(:endpoint, __MODULE__)
+          },
+          []
+        )
+      end
     end
   end
 

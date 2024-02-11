@@ -6,16 +6,7 @@ defmodule SiteEncrypt.PebbleTest do
   @moduletag :pebble
 
   setup_all do
-    start_supervised!(
-      {SiteEncrypt.Phoenix,
-       endpoint: TestEndpoint,
-       endpoint_opts: [
-         http: [port: 5002],
-         https: [port: 5001],
-         url: [scheme: "https", host: "localhost", port: 5001]
-       ]}
-    )
-
+    start_supervised!(TestEndpoint)
     :ok
   end
 
@@ -40,7 +31,13 @@ defmodule SiteEncrypt.PebbleTest do
     @moduledoc false
 
     use Phoenix.Endpoint, otp_app: :site_encrypt
-    use SiteEncrypt.Phoenix
+
+    use SiteEncrypt.Phoenix,
+      endpoint_opts: [
+        http: [port: 5002],
+        https: [port: 5001],
+        url: [scheme: "https", host: "localhost", port: 5001]
+      ]
 
     @impl SiteEncrypt
     def certification do

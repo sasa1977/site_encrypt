@@ -10,16 +10,7 @@ defmodule SiteEncrypt.Certification.PeriodicTest do
   alias SiteEncrypt.Certification.Periodic
 
   setup_all do
-    start_supervised!(
-      {SiteEncrypt.Phoenix,
-       endpoint: TestEndpoint,
-       endpoint_opts: [
-         http: [port: 4200],
-         https: [port: 4201],
-         url: [scheme: "https", host: "localhost", port: 4201]
-       ]}
-    )
-
+    start_supervised!(TestEndpoint)
     :ok
   end
 
@@ -107,7 +98,13 @@ defmodule SiteEncrypt.Certification.PeriodicTest do
     @moduledoc false
 
     use Phoenix.Endpoint, otp_app: :site_encrypt
-    use SiteEncrypt.Phoenix
+
+    use SiteEncrypt.Phoenix,
+      endpoint_opts: [
+        http: [port: 4200],
+        https: [port: 4201],
+        url: [scheme: "https", host: "localhost", port: 4201]
+      ]
 
     @impl SiteEncrypt
     def certification do

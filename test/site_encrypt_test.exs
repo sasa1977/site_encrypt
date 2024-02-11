@@ -29,8 +29,7 @@ for {input, index} <- Enum.with_index(inputs),
 
     setup_all do
       start_supervised!({
-        SiteEncrypt.Phoenix,
-        endpoint: TestEndpoint,
+        TestEndpoint,
         endpoint_opts: [
           adapter: unquote(input.adapter),
           http: [port: unquote(http_port)],

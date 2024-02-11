@@ -1,6 +1,12 @@
 defmodule PhoenixDemo.Endpoint do
   use Phoenix.Endpoint, otp_app: :phoenix_demo
-  use SiteEncrypt.Phoenix
+
+  use SiteEncrypt.Phoenix,
+    endpoint_opts: [
+      http: [port: 4000],
+      https: [port: 4001],
+      url: [scheme: "https", host: "localhost", port: 4001]
+    ]
 
   plug SiteEncrypt.AcmeChallenge, __MODULE__
   plug Plug.SSL, exclude: [], host: "localhost:4001"
