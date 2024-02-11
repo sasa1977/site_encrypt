@@ -97,9 +97,8 @@ defmodule SiteEncrypt.Certification.PeriodicTest do
   defmodule TestEndpoint do
     @moduledoc false
 
-    use Phoenix.Endpoint, otp_app: :site_encrypt
-
-    use SiteEncrypt.Phoenix,
+    use SiteEncrypt.Phoenix.Endpoint,
+      otp_app: :site_encrypt,
       endpoint_opts: [
         http: [port: 4200],
         https: [port: 4201],

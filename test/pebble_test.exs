@@ -30,9 +30,8 @@ defmodule SiteEncrypt.PebbleTest do
   defmodule TestEndpoint do
     @moduledoc false
 
-    use Phoenix.Endpoint, otp_app: :site_encrypt
-
-    use SiteEncrypt.Phoenix,
+    use SiteEncrypt.Phoenix.Endpoint,
+      otp_app: :site_encrypt,
       endpoint_opts: [
         http: [port: 5002],
         https: [port: 5001],

@@ -1,4 +1,4 @@
-defmodule SiteEncrypt.Phoenix do
+defmodule SiteEncrypt.Phoenix.Endpoint do
   @moduledoc """
   `SiteEncrypt` adapter for Phoenix endpoints.
 
@@ -27,13 +27,12 @@ defmodule SiteEncrypt.Phoenix do
 
   @doc false
   defmacro __using__(static_opts) do
-    quote do
-      unless Enum.member?(@behaviour, Phoenix.Endpoint),
-        do: raise("SiteEncrypt.Phoenix must be used after Phoenix.Endpoint")
+    quote bind_quoted: [static_opts: static_opts] do
+      {endpoint_opts, static_opts} = Keyword.split(static_opts, [:otp_app])
+      use Phoenix.Endpoint, endpoint_opts
 
       @behaviour SiteEncrypt
       require SiteEncrypt
-      require SiteEncrypt.Phoenix
 
       plug SiteEncrypt.AcmeChallenge, __MODULE__
 
@@ -50,7 +49,7 @@ defmodule SiteEncrypt.Phoenix do
       def child_spec(opts) do
         Supervisor.child_spec(
           {
-            SiteEncrypt.Phoenix,
+            SiteEncrypt.Phoenix.Endpoint,
             unquote(static_opts)
             |> Keyword.merge(opts)
             |> Keyword.put(:endpoint, __MODULE__)

@@ -1,7 +1,6 @@
 defmodule PhoenixDemo.Endpoint do
-  use Phoenix.Endpoint, otp_app: :phoenix_demo
-
-  use SiteEncrypt.Phoenix,
+  use SiteEncrypt.Phoenix.Endpoint,
+    otp_app: :phoenix_demo,
     endpoint_opts: [
       http: [port: 4000],
       https: [port: 4001],

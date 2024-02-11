@@ -101,8 +101,7 @@ for {input, index} <- Enum.with_index(inputs),
     defmodule TestEndpoint do
       @moduledoc false
 
-      use Phoenix.Endpoint, otp_app: :site_encrypt
-      use SiteEncrypt.Phoenix
+      use SiteEncrypt.Phoenix.Endpoint, otp_app: :site_encrypt
 
       def domains, do: :persistent_term.get({__MODULE__, :domains}, ~w/localhost foo.localhost/)
       def set_domains(domains), do: :persistent_term.put({__MODULE__, :domains}, domains)
