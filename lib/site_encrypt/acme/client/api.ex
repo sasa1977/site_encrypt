@@ -13,7 +13,6 @@ defmodule SiteEncrypt.Acme.Client.API do
   any resources open, so you can safely use it from multiple processes.
   """
   alias SiteEncrypt.HttpClient
-  alias SiteEncrypt.HttpClient
   alias SiteEncrypt.Acme.Client.Crypto
 
   defmodule Session do
