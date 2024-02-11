@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+
+- Support bandit 1.x
+
 ## 0.5.0
 
 - added `SiteEncrypt.refresh_config/1`
