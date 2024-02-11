@@ -42,7 +42,7 @@ defmodule SiteEncrypt.Acme.Client.API do
           revoke_cert: String.t()
         }
 
-  @type error :: Mint.Types.error() | HTTP.response()
+  @type error :: Mint.Types.error() | HttpClient.response()
 
   @type order :: %{
           :status => status,

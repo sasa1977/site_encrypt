@@ -10,7 +10,11 @@ defmodule SiteEncrypt.MixProject do
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      dialyzer: [plt_add_deps: :transitive, remove_defaults: [:unknown]],
+      dialyzer: [
+        plt_add_deps: :app_tree,
+        plt_add_apps: [:mix, :ex_unit],
+        ignore_warnings: "dialyzer.ignore"
+      ],
       docs: docs(),
       package: package()
     ]
