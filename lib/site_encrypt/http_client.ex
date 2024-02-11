@@ -80,35 +80,4 @@ defmodule SiteEncrypt.HttpClient do
      |> Map.update!(:headers, &List.flatten/1)
      |> Map.update!(:body, &IO.iodata_to_binary/1), conn}
   end
-
-  # defp get_response(conn, req) do
-  #   Stream.unfold(
-  #     conn,
-  #     fn conn ->
-  #       {:ok, conn, responses} = Mint.HTTP.recv(conn, 0, :timer.minutes(1))
-  #       {responses, conn}
-  #     end
-  #   )
-  #   |> Stream.flat_map(& &1)
-  #   |> Enum.reduce_while(
-  #     %{status: nil, headers: [], body: ""},
-  #     fn
-  #       {:status, ^req, status}, response ->
-  #         {:cont, Map.put(response, :status, status)}
-
-  #       {:headers, ^req, headers}, response ->
-  #         headers = Enum.map(headers, fn {key, val} -> {String.downcase(key), val} end)
-  #         {:cont, Map.update!(response, :headers, &[&1, headers])}
-
-  #       {:data, ^req, data}, response ->
-  #         {:cont, Map.update!(response, :body, &[&1, data])}
-
-  #       {:done, ^req}, response ->
-  #         {:halt,
-  #          response
-  #          |> Map.update!(:headers, &List.flatten/1)
-  #          |> Map.update!(:body, &IO.iodata_to_binary/1)}
-  #     end
-  #   )
-  # end
 end
