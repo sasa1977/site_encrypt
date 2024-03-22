@@ -3,7 +3,7 @@ defmodule PhoenixDemo.Application do
 
   def start(_type, _args) do
     Supervisor.start_link(
-      [{SiteEncrypt.Phoenix, PhoenixDemo.Endpoint}],
+      [PhoenixDemo.Endpoint],
       strategy: :one_for_one,
       name: __MODULE__
     )

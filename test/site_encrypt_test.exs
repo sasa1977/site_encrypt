@@ -5,6 +5,10 @@ inputs =
 
 for {input, index} <- Enum.with_index(inputs),
     input.client != :certbot or System.get_env("CI") == "true" do
+  http_port = 40000 + 100 * index
+  https_port = http_port + 1
+  acme_server_port = http_port + 2
+
   defmodule Module.concat([
               SiteEncrypt,
               input.adapter,
@@ -24,7 +28,16 @@ for {input, index} <- Enum.with_index(inputs),
       end
 
     setup_all do
-      start_supervised!({SiteEncrypt.Phoenix, TestEndpoint})
+      start_supervised!({
+        TestEndpoint,
+        endpoint_opts: [
+          adapter: unquote(input.adapter),
+          http: [port: unquote(http_port)],
+          https: [port: unquote(https_port)],
+          url: [scheme: "https", host: "localhost", port: unquote(https_port)]
+        ]
+      })
+
       :ok
     end
 
@@ -88,31 +101,17 @@ for {input, index} <- Enum.with_index(inputs),
     defmodule TestEndpoint do
       @moduledoc false
 
-      use Phoenix.Endpoint, otp_app: :site_encrypt
-      use SiteEncrypt.Phoenix
-
-      @base_port 40000 + 100 * index
+      use SiteEncrypt.Phoenix.Endpoint, otp_app: :site_encrypt
 
       def domains, do: :persistent_term.get({__MODULE__, :domains}, ~w/localhost foo.localhost/)
       def set_domains(domains), do: :persistent_term.put({__MODULE__, :domains}, domains)
       def clear_domains, do: :persistent_term.erase({__MODULE__, :domains})
 
-      @impl Phoenix.Endpoint
-      def init(_key, config) do
-        {:ok,
-         config
-         |> Keyword.put(:adapter, unquote(input.adapter))
-         |> SiteEncrypt.Phoenix.configure_https(port: @base_port + 1)
-         |> Keyword.merge(
-           url: [scheme: "https", host: "localhost", port: @base_port + 1],
-           http: [port: @base_port]
-         )}
-      end
-
       @impl SiteEncrypt
       def certification do
         SiteEncrypt.configure(
-          directory_url: {:internal, port: @base_port + 2, adapter: unquote(server_adapter)},
+          directory_url:
+            {:internal, port: unquote(acme_server_port), adapter: unquote(server_adapter)},
           domains: domains(),
           emails: ["admin@foo.bar"],
           db_folder:

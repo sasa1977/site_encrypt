@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.6.0
+
+**Breaking**: changed the endpoint setup. Previously the client code had to configure https via the `Phoenix.Endpoint.init/2` callback. However, this callback is deprecated in the latest Phoenix, which now favours passing endpoint options via an argument to `start_link/1` (or `child_spec/1`). This style was previously not supported by site_encrypt.
+
+So to make all of this work, the setup flow has been changed and simplified. To upgrade from the previous version you need to do the following:
+
+1. Remove `use SiteEncrypt.Phoenix` from the endpoint module.
+1. Replace `use Phoenix.Endpoint` with `use SiteEncrypt.Phoenix.Endpoint`. Keep the `:otp_app` option.
+1. Remove invocation of `SiteEncrypt.Phoenix.configure_https/1` from your endpoint's `init/1`.
+1. In the parent supervisor children list, replace the child `{SiteEncrypt.Phoenix, MyEndpoint}` with `MyEndpoint`.
+
+Note that `init/1` callback is deprecated. To specify endpoint config at runtime, you can use the spec `{MyEndpoint, endpoint_config}`. Alternatively, you can override the `child_spec/1` function in the endpoint module:
+
+```elixir
+# in your endpoint module
+
+defoverridable child_spec: 1
+
+def child_spec(_arg) do
+  endpoint_config = [
+    http: [...],
+    https: [...],
+    ...
+  ]
+
+  super(endpoint_config)
+end
+```
+
 ## 0.5.1
 
 - Support bandit 1.x

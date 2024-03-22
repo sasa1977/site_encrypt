@@ -1,6 +1,11 @@
 defmodule PhoenixDemo.Endpoint do
-  use Phoenix.Endpoint, otp_app: :phoenix_demo
-  use SiteEncrypt.Phoenix
+  use SiteEncrypt.Phoenix.Endpoint,
+    otp_app: :phoenix_demo,
+    endpoint_opts: [
+      http: [port: 4000],
+      https: [port: 4001],
+      url: [scheme: "https", host: "localhost", port: 4001]
+    ]
 
   plug SiteEncrypt.AcmeChallenge, __MODULE__
   plug Plug.SSL, exclude: [], host: "localhost:4001"
@@ -8,17 +13,6 @@ defmodule PhoenixDemo.Endpoint do
 
   defp hello(conn, _opts),
     do: Plug.Conn.send_resp(conn, :ok, "This site has been encrypted by site_encrypt.")
-
-  @impl Phoenix.Endpoint
-  def init(_key, config) do
-    {:ok,
-     config
-     |> SiteEncrypt.Phoenix.configure_https(port: 4001)
-     |> Keyword.merge(
-       url: [scheme: "https", host: "localhost", port: 4001],
-       http: [port: 4000]
-     )}
-  end
 
   @impl SiteEncrypt
   def certification do

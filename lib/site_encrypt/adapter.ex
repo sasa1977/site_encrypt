@@ -3,7 +3,7 @@ defmodule SiteEncrypt.Adapter do
 
   use Parent.GenServer
 
-  @callback config(SiteEncrypt.id(), arg :: any) :: %{
+  @callback config(SiteEncrypt.id(), Keyword.t()) :: %{
               certification: SiteEncrypt.certification(),
               site_spec: Parent.child_spec()
             }
@@ -32,8 +32,8 @@ defmodule SiteEncrypt.Adapter do
     end
   end
 
-  def start_link(callback, id, arg),
-    do: Parent.GenServer.start_link(__MODULE__, {callback, id, arg}, name: Registry.root(id))
+  def start_link(callback, id, opts),
+    do: Parent.GenServer.start_link(__MODULE__, {callback, id, opts}, name: Registry.root(id))
 
   @doc false
   # used only in tests
@@ -51,8 +51,8 @@ defmodule SiteEncrypt.Adapter do
   end
 
   @impl GenServer
-  def init({callback, id, arg}) do
-    state = %{callback: callback, id: id, arg: arg}
+  def init({callback, id, opts}) do
+    state = %{callback: callback, id: id, opts: opts}
     start_all_children!(state)
     {:ok, state}
   end
@@ -65,13 +65,13 @@ defmodule SiteEncrypt.Adapter do
 
   @impl GenServer
   def handle_call(:refresh_config, _from, state) do
-    adapter_config = state.callback.config(state.id, state.arg)
+    adapter_config = state.callback.config(state.id, state.opts)
     Registry.store_config(state.id, adapter_config.certification)
     {:reply, :ok, state}
   end
 
   defp start_all_children!(state) do
-    adapter_config = state.callback.config(state.id, state.arg)
+    adapter_config = state.callback.config(state.id, state.opts)
     Registry.store_config(state.id, adapter_config.certification)
 
     SiteEncrypt.initialize_certs(adapter_config.certification)
@@ -89,7 +89,7 @@ defmodule SiteEncrypt.Adapter do
   defp start_acme_server(state, adapter_config) do
     config = adapter_config.certification
 
-    with {:ok, site_port} <- state.callback.http_port(state.id, state.arg),
+    with {:ok, site_port} <- state.callback.http_port(state.id, state.opts),
          %{directory_url: {:internal, acme_server_opts}} <- config do
       {acme_server_port, acme_server_opts} = Keyword.pop!(acme_server_opts, :port)
       dns = dns(config.id, site_port)

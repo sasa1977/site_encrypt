@@ -29,7 +29,7 @@ A basic demo Phoenix project is available [here](https://github.com/sasa1977/sit
       defp deps do
         [
           # ...
-          {:site_encrypt, "~> 0.5"}
+          {:site_encrypt, "~> 0.6"}
         ]
       end
     end
@@ -43,8 +43,8 @@ A basic demo Phoenix project is available [here](https://github.com/sasa1977/sit
     defmodule PhoenixDemo.Endpoint do
       # ...
 
-      # add this after `use Phoenix.Endpoint`
-      use SiteEncrypt.Phoenix
+      # add this instead of `use Phoenix.Endpoint`
+      use SiteEncrypt.Phoenix.Endpoint, otp_app: :my_app
 
       # ...
 
@@ -82,33 +82,14 @@ A basic demo Phoenix project is available [here](https://github.com/sasa1977/sit
     end
     ```
 
-1. Configure https:
-
-    ```elixir
-    defmodule PhoenixDemo.Endpoint do
-      # ...
-
-      @impl Phoenix.Endpoint
-      def init(_key, config) do
-        # this will merge key, cert, and chain into `:https` configuration from config.exs
-        {:ok, SiteEncrypt.Phoenix.configure_https(config)}
-
-        # to completely configure https from `init/2`, invoke:
-        #   SiteEncrypt.Phoenix.configure_https(config, port: 4001, ...)
-      end
-
-      # ...
-    end
-    ```
-
-1. Start the endpoint via `SiteEncrypt`:
+1. Start the endpoint:
 
     ```elixir
     defmodule PhoenixDemo.Application do
       use Application
 
       def start(_type, _args) do
-        children = [{SiteEncrypt.Phoenix, PhoenixDemo.Endpoint}]
+        children = [PhoenixDemo.Endpoint]
         opts = [strategy: :one_for_one, name: PhoenixDemo.Supervisor]
         Supervisor.start_link(children, opts)
       end
