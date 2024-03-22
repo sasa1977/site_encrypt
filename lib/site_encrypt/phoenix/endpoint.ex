@@ -51,7 +51,7 @@ defmodule SiteEncrypt.Phoenix.Endpoint do
           {
             SiteEncrypt.Phoenix.Endpoint,
             unquote(using_opts)
-            |> Config.Reader.merge(opts)
+            |> Config.Reader.merge(endpoint_opts: opts)
             |> Keyword.put(:endpoint, __MODULE__)
           },
           []
