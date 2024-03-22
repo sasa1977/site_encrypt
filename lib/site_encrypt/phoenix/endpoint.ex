@@ -26,10 +26,10 @@ defmodule SiteEncrypt.Phoenix.Endpoint do
   end
 
   @doc false
-  defmacro __using__(static_opts) do
-    quote bind_quoted: [static_opts: static_opts] do
-      {endpoint_opts, static_opts} = Keyword.split(static_opts, [:otp_app])
-      use Phoenix.Endpoint, endpoint_opts
+  defmacro __using__(opts) do
+    quote bind_quoted: [opts: opts] do
+      {phoenix_using_opts, using_opts} = Keyword.split(opts, [:otp_app])
+      use Phoenix.Endpoint, phoenix_using_opts
 
       @behaviour SiteEncrypt
       require SiteEncrypt
@@ -50,7 +50,7 @@ defmodule SiteEncrypt.Phoenix.Endpoint do
         Supervisor.child_spec(
           {
             SiteEncrypt.Phoenix.Endpoint,
-            unquote(static_opts)
+            unquote(using_opts)
             |> Config.Reader.merge(opts)
             |> Keyword.put(:endpoint, __MODULE__)
           },
