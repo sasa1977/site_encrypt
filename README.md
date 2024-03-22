@@ -29,7 +29,7 @@ A basic demo Phoenix project is available [here](https://github.com/sasa1977/sit
       defp deps do
         [
           # ...
-          {:site_encrypt, "~> 0.5"}
+          {:site_encrypt, "~> 0.6"}
         ]
       end
     end
