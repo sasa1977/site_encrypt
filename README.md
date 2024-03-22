@@ -44,7 +44,7 @@ A basic demo Phoenix project is available [here](https://github.com/sasa1977/sit
       # ...
 
       # add this instead of `use Phoenix.Endpoint`
-      use SiteEncrypt.Phoenix.Endpoint
+      use SiteEncrypt.Phoenix.Endpoint, otp_app: :my_app
 
       # ...
 
@@ -82,7 +82,7 @@ A basic demo Phoenix project is available [here](https://github.com/sasa1977/sit
     end
     ```
 
-1. Start the endpoint via `SiteEncrypt`:
+1. Start the endpoint:
 
     ```elixir
     defmodule PhoenixDemo.Application do

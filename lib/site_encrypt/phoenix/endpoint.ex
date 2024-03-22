@@ -4,11 +4,11 @@ defmodule SiteEncrypt.Phoenix.Endpoint do
 
   ## Usage
 
-  1. Add `use SiteEncrypt.Phoenix` to your endpoint immediately after `use Phoenix.Endpoint`
-  2. Configure https via `configure_https/2`.
-  3. Add the implementation of `c:SiteEncrypt.certification/0` to the endpoint (the
+  1. Replace `use Phoenix.Endpoint` with `use SiteEncrypt.Phoenix.Endpoint`
+  2. Add the implementation of `c:SiteEncrypt.certification/0` to the endpoint (the
     `@behaviour SiteEncrypt` is injected when this module is used).
-  4. Start the endpoint by providing `{SiteEncrypt.Phoenix, endpoint: PhoenixDemo.Endpoint}` as a supervisor child.
+
+  See `__using__/1` for details.
   """
 
   use SiteEncrypt.Adapter
@@ -25,7 +25,58 @@ defmodule SiteEncrypt.Phoenix.Endpoint do
     Adapter.start_link(__MODULE__, id, opts)
   end
 
-  @doc false
+  @doc """
+  Turns the module into a Phoenix Endpoint certified by site_encrypt.
+
+  This macro will add `use Phoenix.Endpoint` and `@behaviour SiteEncrypt` to the caller module.
+  It will also provide the default implementation of `c:SiteEncrypt.handle_new_cert/0`.
+
+  The macro accepts the following options:
+
+    - `:otp_app` - Same as with `Phoenix.Endpoint`, specifies the otp_app running the endpoint. Any
+      app env endpoint options must be placed under that app.
+    - `:endpoint_opts` - Endpoint options which are deep merged on top of options defined in app
+      config.
+
+  The macro generates the `child_spec/1` function, so you can list your endpoint module as a
+  supervisor child. In addition, you can pass additional endpoint options with `{MyEndpoint, opts}`,
+  where `opts` is standard
+  [Phoenix endpoint configuration](https://hexdocs.pm/phoenix/Phoenix.Endpoint.html#module-endpoint-configuration).
+
+  The final endpoint config is assembled in the following order:
+
+  1. Options provided in config.exs and runtime.exs (via `config :my_app, MyEndpoint, [...]`)
+  2. Options provided via `use SiteEncrypt.Phoenix.Endpoint, endpoint_opts: [...]`
+  3. Options provided via `{MyEndpoint, opts}`.
+
+  ## Overriding child_spec
+
+  To provide config at runtime and embed it inside the endpoint module, you can override the
+  `child_spec/1` function:
+
+      defmodule MyEndpoint do
+        use SiteEncrypt.Phoenix.Endpoint, otp_app: :my_app
+
+        defoverridable child_spec: 1
+
+        def child_spec(_arg) do
+          # invoked at runtime, before the endpoint is first started
+
+          # builds endpoint config at runtime
+          endpoint_config = [
+            http: [...],
+            https: [...],
+            ...
+          ]
+
+          # Invokes the base implementation with the built config. This will be merged on top of
+          # options provided via `use SiteEncrypt.Phoenix.Endpoint` and app config.
+          super(endpoint_config)
+        end
+
+        ...
+      end
+  """
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       {phoenix_using_opts, using_opts} = Keyword.split(opts, [:otp_app])
