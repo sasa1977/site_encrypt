@@ -114,7 +114,7 @@ defmodule SiteEncrypt do
       """
     ],
     log_level: [
-      type: {:in, [:debug, :info, :warn, :error]},
+      type: {:in, Logger.levels()},
       default: :info,
       doc: "Logger level for info messages."
     ],
