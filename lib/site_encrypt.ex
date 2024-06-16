@@ -47,6 +47,13 @@ defmodule SiteEncrypt do
   @doc "Invoked after the new certificate has been obtained."
   @callback handle_new_cert() :: any
 
+  log_levels =
+    if Version.compare(System.version(), "1.11.0") in [:gt, :eq] do
+      [:error, :info, :debug, :emergency, :alert, :critical, :warning, :notice]
+    else
+      [:debug, :info, :warn, :error]
+    end
+
   @certification_schema [
     client: [
       type: {:in, [:native, :certbot]},
@@ -114,7 +121,7 @@ defmodule SiteEncrypt do
       """
     ],
     log_level: [
-      type: {:in, Logger.levels()},
+      type: {:in, log_levels},
       default: :info,
       doc: "Logger level for info messages."
     ],
