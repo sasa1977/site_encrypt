@@ -14,8 +14,8 @@ jobs:
 
       - uses: erlef/setup-elixir@v1
         with:
-          otp-version: 26.0
-          elixir-version: 1.16.0
+          otp-version: 27.0
+          elixir-version: 1.17.0
 
       - name: Restore cached deps
         uses: actions/cache@v1
