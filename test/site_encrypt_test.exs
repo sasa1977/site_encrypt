@@ -30,12 +30,10 @@ for {input, index} <- Enum.with_index(inputs),
     setup_all do
       start_supervised!({
         TestEndpoint,
-        endpoint_opts: [
-          adapter: unquote(input.adapter),
-          http: [port: unquote(http_port)],
-          https: [port: unquote(https_port)],
-          url: [scheme: "https", host: "localhost", port: unquote(https_port)]
-        ]
+        adapter: unquote(input.adapter),
+        http: [port: unquote(http_port)],
+        https: [port: unquote(https_port)],
+        url: [scheme: "https", host: "localhost", port: unquote(https_port)]
       })
 
       :ok
