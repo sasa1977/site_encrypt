@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- drop support for Elixir < v1.16
+- [allow](https://github.com/sasa1977/site_encrypt/pull/63) all `Logger.levels()` in `:log_level` option
+
 ## 0.6.0
 
 **Breaking**: changed the endpoint setup. Previously the client code had to configure https via the `Phoenix.Endpoint.init/2` callback. However, this callback is deprecated in the latest Phoenix, which now favours passing endpoint options via an argument to `start_link/1` (or `child_spec/1`). This style was previously not supported by site_encrypt.
