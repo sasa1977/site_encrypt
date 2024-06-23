@@ -348,9 +348,9 @@ defmodule SiteEncrypt do
     port = Keyword.get(opts, :port)
 
     cond do
-      is_nil(port) -> "missing port for the internal CA server"
-      not is_integer(port) -> "port for the internal CA server must be an integer"
-      port <= 0 -> "port for the internal CA server must be a positive integer"
+      is_nil(port) -> {:error, "missing port for the internal CA server"}
+      not is_integer(port) -> {:error, "port for the internal CA server must be an integer"}
+      port <= 0 -> {:error, "port for the internal CA server must be a positive integer"}
       true -> {:ok, internal}
     end
   end
