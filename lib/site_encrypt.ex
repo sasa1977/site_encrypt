@@ -20,7 +20,9 @@ defmodule SiteEncrypt do
           client: :native | :certbot,
           backup: String.t() | nil,
           callback: module,
+          key_type: :rsa | :ecdsa,
           key_size: pos_integer,
+          elliptic_curve: String.t(),
           periodic_offset: Certification.Periodic.offset()
         }
 
@@ -118,10 +120,25 @@ defmodule SiteEncrypt do
       default: :info,
       doc: "Logger level for info messages."
     ],
+    key_type: [
+      type: {:in, [:rsa, :ecdsa]},
+      default: :ecdsa,
+      doc: """
+      Specifies the algorithm to be used for the key.
+
+      - `:rsa` - Use RSA algorithm for key generation. This option is widely supported and ensures compatibility with a broad range of clients and servers.
+      - `:ecdsa` - Use ECDSA for key generation. This option provides better performance and security with smaller key sizes compared to RSA. This is the default option.
+      """
+    ],
     key_size: [
       type: :pos_integer,
       default: 4096,
-      doc: "The size used for generating private keys."
+      doc: "The size used for generating private RSA keys."
+    ],
+    elliptic_curve: [
+      type: {:in, ["P-256", "P-384"]},
+      default: "P-256",
+      doc: "The curve used for generating private ECDSA keys."
     ],
     mode: [
       type: {:in, [:auto, :manual]},
