@@ -1,5 +1,5 @@
 defmodule SiteEncrypt.PebbleTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   import SiteEncrypt.Phoenix.Test
   alias __MODULE__.TestEndpoint
 

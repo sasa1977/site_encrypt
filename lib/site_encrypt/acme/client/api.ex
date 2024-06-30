@@ -253,7 +253,7 @@ defmodule SiteEncrypt.Acme.Client.API do
   defp jws_body(session, url, id_field, payload) do
     protected =
       Map.merge(
-        %{"alg" => "RS256", "nonce" => session.nonce, "url" => url},
+        %{"alg" => jwk_to_alg(session.account_key), "nonce" => session.nonce, "url" => url},
         id_map(id_field, session)
       )
 
@@ -268,6 +268,16 @@ defmodule SiteEncrypt.Acme.Client.API do
   end
 
   defp id_map(:kid, session), do: %{"kid" => session.kid}
+
+  defp jwk_to_alg(jwk) do
+    {_modules, public_map} = JOSE.JWK.to_public_map(jwk)
+
+    case public_map do
+      %{"kty" => "RSA"} -> "RS256"
+      %{"kty" => "EC", "crv" => "P-256"} -> "ES256"
+      %{"kty" => "EC", "crv" => "P-384"} -> "ES384"
+    end
+  end
 
   defp http_request(session, verb, url, opts \\ []) do
     opts =

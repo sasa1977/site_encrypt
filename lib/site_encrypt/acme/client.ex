@@ -16,7 +16,7 @@ defmodule SiteEncrypt.Acme.Client do
   @spec new_account(SiteEncrypt.id(), API.session_opts()) :: API.session()
   def new_account(id, session_opts \\ []) do
     config = SiteEncrypt.Registry.config(id)
-    account_key = JOSE.JWK.generate_key({:rsa, config.key_size})
+    account_key = generate_key(config)
     session = start_session(SiteEncrypt.directory_url(config), account_key, session_opts)
     {:ok, session} = API.new_account(session, config.emails)
     session
@@ -45,6 +45,14 @@ defmodule SiteEncrypt.Acme.Client do
     {private_key, order, session} = process_new_order(session, order, config)
     {:ok, cert, chain, session} = API.get_cert(session, order)
     {%{privkey: Crypto.private_key_to_pem(private_key), cert: cert, chain: chain}, session}
+  end
+
+  defp generate_key(%{key_type: :rsa, key_size: key_size}) do
+    JOSE.JWK.generate_key({:rsa, key_size})
+  end
+
+  defp generate_key(%{key_type: :ecdsa, elliptic_curve: curve}) do
+    JOSE.JWK.generate_key({:ec, curve})
   end
 
   defp start_session(directory_url, account_key, session_opts) do
