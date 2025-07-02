@@ -42,7 +42,7 @@ defmodule SiteEncrypt.MixProject do
       {:plug_cowboy, "~> 2.5", optional: true},
       {:plug, "~> 1.7", optional: true},
       {:stream_data, "~> 0.1", only: [:dev, :test]},
-      {:x509, "~> 0.8.8"}
+      {:x509, "~> 0.8"}
     ]
   end
 
