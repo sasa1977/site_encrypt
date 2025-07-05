@@ -4,6 +4,8 @@
 
 - drop support for Elixir < v1.16
 - [allow](https://github.com/sasa1977/site_encrypt/pull/63) all `Logger.levels()` in `:log_level` option
+- [support](https://github.com/sasa1977/site_encrypt/pull/69) ECDSA in the native ACME client
+- [default](https://github.com/sasa1977/site_encrypt/pull/69) to ECDSA in the native ACME client
 
 ## 0.6.0
 
