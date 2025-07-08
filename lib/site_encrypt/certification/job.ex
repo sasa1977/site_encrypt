@@ -4,7 +4,8 @@ defmodule SiteEncrypt.Certification.Job do
   require Logger
 
   @callback pems(SiteEncrypt.config()) :: {:ok, SiteEncrypt.pems()} | :error
-  @callback full_challenge(SiteEncrypt.config(), String.t()) :: String.t()
+  @callback full_challenge(SiteEncrypt.config(), String.t()) ::
+              {:ok, String.t()} | {:error, term()}
 
   @callback certify(SiteEncrypt.config(), force_certifyal: boolean) :: :ok | :error
 

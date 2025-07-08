@@ -58,7 +58,7 @@ defmodule SiteEncrypt.Certification.Certbot do
       "acme-challenge",
       challenge
     ])
-    |> File.read!()
+    |> File.read()
   end
 
   defp ensure_folders(config) do
