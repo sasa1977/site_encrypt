@@ -85,7 +85,8 @@ defmodule SiteEncrypt.Acme.Client.API do
   @spec new_session(String.t(), JOSE.JWK.t(), session_opts) ::
           {:ok, session} | {:error, error}
   def new_session(directory_url, account_key, http_opts \\ []) do
-    with {response, session} <- initialize_session(http_opts, account_key, directory_url),
+    with {response, %Session{} = session} <-
+           initialize_session(http_opts, account_key, directory_url),
          :ok <- validate_response(response) do
       directory =
         response.payload
@@ -102,7 +103,7 @@ defmodule SiteEncrypt.Acme.Client.API do
     url = session.directory.new_account
     payload = %{"contact" => Enum.map(emails, &"mailto:#{&1}"), "termsOfServiceAgreed" => true}
 
-    with {:ok, response, session} <- jws_request(session, :post, url, :jwk, payload) do
+    with {:ok, response, %Session{} = session} <- jws_request(session, :post, url, :jwk, payload) do
       location = :proplists.get_value("location", response.headers)
       {:ok, %Session{session | kid: location}}
     end
@@ -119,7 +120,7 @@ defmodule SiteEncrypt.Acme.Client.API do
     url = session.directory.new_account
     payload = %{"onlyReturnExisting" => true}
 
-    with {:ok, response, session} <- jws_request(session, :post, url, :jwk, payload) do
+    with {:ok, response, %Session{} = session} <- jws_request(session, :post, url, :jwk, payload) do
       location = :proplists.get_value("location", response.headers)
       {:ok, %Session{session | kid: location}}
     end
@@ -224,7 +225,7 @@ defmodule SiteEncrypt.Acme.Client.API do
   end
 
   defp jws_request(session, verb, url, id_field, payload \\ "") do
-    with {:ok, session} <- get_nonce(session) do
+    with {:ok, %Session{} = session} <- get_nonce(session) do
       headers = [{"content-type", "application/jose+json"}]
       body = jws_body(session, url, id_field, payload)
       session = %Session{session | nonce: nil}
@@ -269,7 +270,7 @@ defmodule SiteEncrypt.Acme.Client.API do
 
   defp id_map(:kid, session), do: %{"kid" => session.kid}
 
-  defp http_request(session, verb, url, opts \\ []) do
+  defp http_request(%Session{} = session, verb, url, opts \\ []) do
     opts =
       opts
       |> Keyword.put_new(:headers, [])
