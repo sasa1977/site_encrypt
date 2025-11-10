@@ -11,7 +11,7 @@ ex_unit_opts =
       Mix.shell().info("""
       To enable pebble tests, start the local container with the following command:
 
-          docker run --rm -it -e "PEBBLE_VA_NOSLEEP=1" --net=host letsencrypt/pebble:v2.1.0 /usr/bin/pebble --strict
+          docker run --rm -it -e "PEBBLE_VA_NOSLEEP=1" --net=host ghcr.io/letsencrypt/pebble:latest
       """)
 
       [exclude: [:pebble]]
