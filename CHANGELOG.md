@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
 - drop support for Elixir < v1.16
 - [allow](https://github.com/sasa1977/site_encrypt/pull/63) all `Logger.levels()` in `:log_level` option
+- log and return unknown challenge (possible spam)
 
 ## 0.6.0
 
