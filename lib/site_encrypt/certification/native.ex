@@ -27,7 +27,7 @@ defmodule SiteEncrypt.Certification.Native do
   end
 
   @impl Job
-  def full_challenge(_config, _challenge), do: raise("unknown challenge")
+  def full_challenge(_config, _challenge), do: {:error, :not_found}
 
   defp log(config, msg) do
     SiteEncrypt.log(config, "#{msg} (CA #{URI.parse(SiteEncrypt.directory_url(config)).host})")
