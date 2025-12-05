@@ -53,10 +53,7 @@ defmodule SiteEncrypt.AcmeChallenge do
 
           [] ->
             # Fall back to direct connection IP
-            case Plug.Conn.get_peer_data(conn) do
-              %{address: address} -> :inet.ntoa(address) |> to_string()
-              _ -> "unknown"
-            end
+            Plug.Conn.get_peer_data(conn).address |> :inet.ntoa() |> to_string()
         end
     end
   end

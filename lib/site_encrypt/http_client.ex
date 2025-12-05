@@ -39,7 +39,10 @@ defmodule SiteEncrypt.HttpClient do
 
     try do
       method = String.upcase(to_string(method))
-      path = URI.to_string(%URI{path: uri.path, query: uri.query})
+
+      # Using struct! because dialyzer complains about %URI{} (because of the deprecated authority field)
+      path = URI.to_string(struct!(URI, path: uri.path, query: uri.query))
+
       headers = Keyword.get(opts, :headers, [])
       body = Keyword.get(opts, :body)
       {:ok, conn, req} = Mint.HTTP.request(conn, method, path, headers, body)
