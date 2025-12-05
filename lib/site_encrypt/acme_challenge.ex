@@ -40,7 +40,7 @@ defmodule SiteEncrypt.AcmeChallenge do
     end
   end
 
-  def get_client_ip(conn) do
+  defp get_client_ip(conn) do
     case Plug.Conn.get_req_header(conn, "x-forwarded-for") do
       [forwarded | _] ->
         forwarded |> String.split(",") |> List.first() |> String.trim()
