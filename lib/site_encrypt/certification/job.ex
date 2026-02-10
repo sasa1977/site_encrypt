@@ -15,7 +15,7 @@ defmodule SiteEncrypt.Certification.Job do
 
     case SiteEncrypt.client(config).certify(config, opts) do
       :error ->
-        Logger.error("Error obtaining certificate for #{hd(config.domains)}")
+        Logger.error("Error obtaining certificate for #{SiteEncrypt.domain_names(config)}")
         :error
 
       :ok ->
