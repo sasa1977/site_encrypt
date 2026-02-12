@@ -263,6 +263,10 @@ defmodule SiteEncrypt do
   end
 
   @doc false
+  @spec domain_names(config) :: String.t()
+  def domain_names(config), do: Enum.join(config.domains, ", ")
+
+  @doc false
   @spec log(config, iodata) :: :ok
   def log(config, chardata_or_fun), do: Logger.log(config.log_level, chardata_or_fun)
 

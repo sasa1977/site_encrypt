@@ -48,10 +48,10 @@ defmodule SiteEncrypt.Certification.Native do
   end
 
   defp create_certificate(config, session) do
-    log(config, "Ordering a new certificate for domain #{hd(config.domains)}")
+    log(config, "Ordering a new certificate for domain(s) #{SiteEncrypt.domain_names(config)}")
     {pems, _session} = Client.create_certificate(session, config.id)
     store_pems!(config, pems)
-    log(config, "New certificate for domain #{hd(config.domains)} obtained")
+    log(config, "New certificate for domain(s) #{SiteEncrypt.domain_names(config)} obtained")
   end
 
   defp account_key(config) do

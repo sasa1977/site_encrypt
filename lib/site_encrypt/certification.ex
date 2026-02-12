@@ -63,7 +63,7 @@ defmodule SiteEncrypt.Certification do
     if not is_nil(config.backup) and
          File.exists?(config.backup) and
          not File.exists?(config.db_folder) do
-      SiteEncrypt.log(config, "restoring certificates for #{hd(config.domains)}")
+      SiteEncrypt.log(config, "restoring certificates for #{SiteEncrypt.domain_names(config)}")
       File.mkdir_p!(config.db_folder)
 
       :ok =
@@ -74,7 +74,7 @@ defmodule SiteEncrypt.Certification do
 
       with {:ok, pems} <- SiteEncrypt.client(config).pems(config) do
         SiteEncrypt.set_certificate(config.id, pems)
-        SiteEncrypt.log(config, "certificates for #{hd(config.domains)} restored")
+        SiteEncrypt.log(config, "certificates for #{SiteEncrypt.domain_names(config)} restored")
       end
     end
   catch
@@ -93,7 +93,7 @@ defmodule SiteEncrypt.Certification do
         start_renew(config)
       else
         SiteEncrypt.log(config, [
-          "Certificate for #{hd(config.domains)} is valid until ",
+          "Certificate for #{SiteEncrypt.domain_names(config)} is valid until ",
           "#{Periodic.cert_valid_until(config)}. ",
           "Next renewal is scheduled for #{Periodic.renewal_date(config)}."
         ])
