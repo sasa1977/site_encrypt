@@ -58,7 +58,7 @@ defmodule SiteEncrypt.Acme.Server do
     size = byte_size(path)
 
     case request_path do
-      <<^path::binary-size(size), rest_path::binary>> -> {:ok, rest_path}
+      <<^path::binary-^size(size), rest_path::binary>> -> {:ok, rest_path}
       _ -> :error
     end
   end
