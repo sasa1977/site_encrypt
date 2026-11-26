@@ -90,7 +90,7 @@ defmodule SiteEncrypt.Acme.Server do
 
     respond_json(
       201,
-      [{"Location", account.location}, nonce_header(config)],
+      [{"location", account.location}, nonce_header(config)],
       %{status: :valid, contact: Map.get(request.payload, "contact", [])}
     )
   end
@@ -109,7 +109,7 @@ defmodule SiteEncrypt.Acme.Server do
 
     respond_json(
       201,
-      [{"Location", "#{config.site}/order/#{order_path}"}, nonce_header(config)],
+      [{"location", "#{config.site}/order/#{order_path}"}, nonce_header(config)],
       %{
         status: order.status,
         expires: expires(),
@@ -157,7 +157,7 @@ defmodule SiteEncrypt.Acme.Server do
 
     respond_json(
       200,
-      [nonce_header(config), {"Link", "<#{authorizations_url}>;rel=\"up\""}],
+      [nonce_header(config), {"link", "<#{authorizations_url}>;rel=\"up\""}],
       http_challenge_data(config, account_id, order, status: :processing)
     )
   end
@@ -218,10 +218,10 @@ defmodule SiteEncrypt.Acme.Server do
   defp respond(status, headers, body \\ ""), do: %{status: status, headers: headers, body: body}
 
   defp respond_json(status, headers \\ [], data),
-    do: respond(status, [{"Content-Type", "application/json"} | headers], Jason.encode!(data))
+    do: respond(status, [{"content-type", "application/json"} | headers], Jason.encode!(data))
 
   defp nonce_header(config) do
-    {"Replay-Nonce",
+    {"replay-nonce",
      SiteEncrypt.Acme.Server.Nonce.new(config) |> to_string() |> Base.encode64(padding: false)}
   end
 
