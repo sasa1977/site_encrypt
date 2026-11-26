@@ -12,28 +12,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: erlef/setup-elixir@v1
+      - uses: erlef/setup-beam@v1
+        id: beam
         with:
-          otp-version: 27.0
-          elixir-version: 1.17.1
+          version-file: .tool-versions
+          version-type: strict
 
       - name: Restore cached deps
         uses: actions/cache@v4
         with:
           path: deps
-          key: deps-${{ env.CACHE_VERSION }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          key: deps-${{ env.CACHE_VERSION }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
           restore-keys: |
-            deps-${{ env.CACHE_VERSION }}-${{ github.ref }}-
-            deps-${{ env.CACHE_VERSION }}-
+            deps-${{ env.CACHE_VERSION }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ github.ref }}-
+            deps-${{ env.CACHE_VERSION }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-
 
       - name: Restore cached build
         uses: actions/cache@v4
         with:
           path: _build
-          key: build-${{ env.CACHE_VERSION }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          key: build-${{ env.CACHE_VERSION }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ github.ref }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
           restore-keys: |
-            build-${{ env.CACHE_VERSION }}-${{ github.ref }}-
-            build-${{ env.CACHE_VERSION }}-
+            build-${{ env.CACHE_VERSION }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ github.ref }}-
+            build-${{ env.CACHE_VERSION }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-
 
       - run: |
           sudo apt-get install software-properties-common
@@ -48,7 +49,7 @@ jobs:
         run: |
           MIX_ENV=test mix compile --warnings-as-errors
           MIX_ENV=dev mix compile --warnings-as-errors
-          MIX_ENV=prod mix compile --warnings-as-error
+          MIX_ENV=prod mix compile --warnings-as-errors
 
       - run: mix format --check-formatted
       - run: mix test || mix test --failed
